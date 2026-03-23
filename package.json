@@ -3,6 +3,10 @@
   "type": "module",
   "module": "index.ts",
   "types": "types/index.d.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -b"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
