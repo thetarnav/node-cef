@@ -32,6 +32,6 @@
     // Build Performance
     "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
   },
-  "include": ["index.ts"],
+  "include": ["src"],
   "exclude": ["node_modules", "types"],
 }

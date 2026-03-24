@@ -1,5 +1,10 @@
 # dependencies (bun install)
-node_modules
+node_modules/
 
 # output
-types
+types/
+tsconfig.tsbuildinfo
+src/cpp/build/
+
+# CEF binaries (downloaded by scripts/download-cef.ts)
+cef/

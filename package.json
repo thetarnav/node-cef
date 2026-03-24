@@ -1,11 +1,16 @@
 {
   "name": "bun-cef",
   "type": "module",
-  "module": "index.ts",
+  "main": "src/ts/index.ts",
+  "module": "src/ts/index.ts",
   "types": "types/index.d.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc -b"
+    "build": "tsc -b",
+    "download:cef": "bun run scripts/download-cef.ts",
+    "build:cef": "cd src/cpp && mkdir -p build && cd build && cmake .. && make -j$(nproc)",
+    "setup": "bun run download:cef && bun run build:cef",
+    "postinstall": "bun run download:cef"
   },
   "devDependencies": {
     "@types/bun": "latest"
