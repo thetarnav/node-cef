@@ -1,9 +1,10 @@
 import { IPCServer } from './ipc.js';
 
 export class Window {
-	private id: string;
-	private ipc: IPCServer;
-	private messageHandlers: ((msg: string) => void)[] = [];
+	id: string;
+	ipc: IPCServer;
+  onMessage: ((msg: string) => void) | undefined
+  onClose: (() => void) | undefined
 
 	constructor(id: string, ipc: IPCServer) {
 		this.id = id;
@@ -12,16 +13,6 @@ export class Window {
 
 	postMessage(msg: string) {
 		this.ipc.sendToAll(`window:post:${this.id}:${msg}`);
-	}
-
-	onMessage(callback: (msg: string) => void) {
-		this.messageHandlers.push(callback);
-	}
-
-	handleIncomingMessage(msg: string) {
-		for (const handler of this.messageHandlers) {
-			handler(msg);
-		}
 	}
 
 	close() {

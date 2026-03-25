@@ -3,12 +3,13 @@ import { IPCServer } from './ipc.js';
 import { Window } from './window.js';
 
 export class App {
-	private ipc: IPCServer;
-	private windows = new Map<string, Window>();
-	private cefProcess: any = null;
-	private ready = false;
-	private readyHandlers: (() => void)[] = [];
-	private pendingWindows: { opts: WindowOptions; resolve: (w: Window) => void }[] = [];
+
+	ipc: IPCServer;
+	windows = new Map<string, Window>();
+	cefProcess: any = null;
+	ready = false;
+	pendingWindows: { opts: WindowOptions; resolve: (w: Window) => void }[] = [];
+  onReady: (() => void) | undefined
 
 	constructor() {
 		this.ipc = new IPCServer();
@@ -20,7 +21,7 @@ export class App {
 		this.setupMessageHandlers();
 	}
 
-	private spawnCEF() {
+	spawnCEF() {
 		const binaryPath = process.cwd() + '/src/cpp/build/cef_host';
 		const binaryDir = process.cwd() + '/src/cpp/build';
 		
@@ -31,11 +32,11 @@ export class App {
 		});
 	}
 
-	private setupMessageHandlers() {
+	setupMessageHandlers() {
 		this.ipc.onMessage((msg: string) => {
 			if (msg === 'hello') {
 				this.ready = true;
-				this.readyHandlers.forEach(h => h());
+				this.onReady?.()
 				this.processPendingWindows();
 				return;
 			}
@@ -49,6 +50,9 @@ export class App {
 			if (msg.startsWith('window:closed:')) {
 				const id = msg.substring(14);
 				console.log('Window closed:', id);
+        let window = this.windows.get(id)
+        console.assert(window != null)
+        window?.onClose?.()
 				this.windows.delete(id);
 				return;
 			}
@@ -60,24 +64,19 @@ export class App {
 					const windowId = rest.substring(0, colonIdx);
 					const message = rest.substring(colonIdx + 1);
 					const win = this.windows.get(windowId);
-					if (win) win.handleIncomingMessage(message);
+					if (win) win.onMessage?.(message);
 				}
 				return;
 			}
 		});
 	}
 
-	private processPendingWindows() {
+	processPendingWindows() {
 		for (const { opts, resolve } of this.pendingWindows) {
 			const win = this.doCreateWindow(opts);
 			resolve(win);
 		}
 		this.pendingWindows = [];
-	}
-
-	onReady(callback: () => void) {
-		if (this.ready) callback();
-		else this.readyHandlers.push(callback);
 	}
 
 	async createWindow(options: WindowOptions): Promise<Window> {
@@ -89,7 +88,7 @@ export class App {
 		});
 	}
 
-	private doCreateWindow(options: WindowOptions): Window {
+	doCreateWindow(options: WindowOptions): Window {
 		const id = `win_${Date.now()}`;
 		const win = new Window(id, this.ipc);
 		this.windows.set(id, win);

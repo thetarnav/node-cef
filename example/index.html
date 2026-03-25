@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hello CEF BUN Example</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            color: white;
+            background: linear-gradient(to right, #507d91, #1c596f, #022737);
+            text-align: center;
+            font-size: 18px;
+            padding: 40px;
+        }
+        button, input {
+            padding: 10px;
+            margin: 10px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+            transition: 0.2s;
+        }
+        button {
+            background: #3498db;
+            color: #fff;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        h1 { 
+            text-shadow: -7px 10px 7px rgb(67 57 57 / 76%); 
+            margin-bottom: 30px;
+        }
+        button:hover { background: #c9913d; }
+        input:focus { outline: none; border-color: #3498db; }
+        #Result {
+            font-size: 20px;
+            margin: 20px;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 5px;
+            min-height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>CEF - Bun Hello World!!!</h1>
+    <div id="Result">Result: Waiting...</div>
+    <br><br>
+    <button onclick="sendMessage()">Say hi</button>
+    <button onclick="sendCustom()">Send custom message</button>
+    <br><br>
+    <input id="input" placeholder="Type a message" />
+    <button onclick="sendInput()">Send input</button>
+    
+    <script>
+        let counter = 0;
+        function sendMessage() {
+            sendToNative(JSON.stringify({ type: 'greeting', data: ++counter }));
+        }
+        function sendCustom() {
+            sendToNative(JSON.stringify({ type: 'custom', payload: { timestamp: Date.now(), random: Math.random() } }));
+        }
+        function sendInput() {
+            const text = document.getElementById('input').value;
+            sendToNative(JSON.stringify({ type: 'user-input', text }));
+        }
+        window.onMessage = function(msg) {
+            document.getElementById('Result').innerText = 'Result: ' + msg;
+        };
+    </script>
+</body>
+</html>
