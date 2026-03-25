@@ -4,7 +4,7 @@ node_modules/
 # output
 types/
 tsconfig.tsbuildinfo
-src/cpp/build/
+build/
 
 # CEF binaries (downloaded by scripts/download-cef.ts)
 cef/

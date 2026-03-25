@@ -5,7 +5,7 @@ import { execSync } from "child_process";
 const CEF_VERSION = "146.0.6+g68649e2";
 const CHROMIUM_VERSION = "146.0.7680.154";
 const PLATFORM = "linux64";
-const OUTPUT_DIR = join(import.meta.dir, "..", "cef", PLATFORM);
+const OUTPUT_DIR = join(import.meta.dir, "cef", PLATFORM);
 
 const URL = `https://cef-builds.spotifycdn.com/cef_binary_${CEF_VERSION}%2Bchromium-${CHROMIUM_VERSION}_${PLATFORM}_minimal.tar.bz2`;
 

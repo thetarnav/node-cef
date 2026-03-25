@@ -1,23 +1,22 @@
-// Copyright (c) 2013 The Chromium Embedded Framework Authors. All rights
-// reserved. Use of this source code is governed by a BSD-style license that
-// can be found in the LICENSE file.
-
-#include "simple_app.h"
+#include "app.h"
+#include "handler.h"
 
 #include <string>
+#include <sstream>
 
+#include "include/base/cef_callback.h"
+#include "include/cef_app.h"
 #include "include/cef_browser.h"
 #include "include/cef_command_line.h"
 #include "include/cef_parser.h"
 #include "include/views/cef_browser_view.h"
 #include "include/views/cef_window.h"
+#include "include/wrapper/cef_closure_task.h"
 #include "include/wrapper/cef_helpers.h"
-#include "simple_handler.h"
+
+// SimpleApp implementation
 
 namespace {
-
-// When using the Views framework this object provides the delegate
-// implementation for the CefWindow that hosts the Views-based browser.
 class SimpleWindowDelegate : public CefWindowDelegate {
  public:
   SimpleWindowDelegate(CefRefPtr<CefBrowserView> browser_view,
@@ -31,9 +30,7 @@ class SimpleWindowDelegate : public CefWindowDelegate {
   SimpleWindowDelegate& operator=(const SimpleWindowDelegate&) = delete;
 
   void OnWindowCreated(CefRefPtr<CefWindow> window) override {
-    // Add the browser view and show the window.
     window->AddChildView(browser_view_);
-
     if (initial_show_state_ != CEF_SHOW_STATE_HIDDEN) {
       window->Show();
     }
@@ -44,7 +41,6 @@ class SimpleWindowDelegate : public CefWindowDelegate {
   }
 
   bool CanClose(CefRefPtr<CefWindow> window) override {
-    // Allow the window to close if the browser says it's OK.
     CefRefPtr<CefBrowser> browser = browser_view_->GetBrowser();
     if (browser) {
       return browser->GetHost()->TryCloseBrowser();
@@ -68,7 +64,6 @@ class SimpleWindowDelegate : public CefWindowDelegate {
   CefRefPtr<CefBrowserView> browser_view_;
   const cef_runtime_style_t runtime_style_;
   const cef_show_state_t initial_show_state_;
-
   IMPLEMENT_REFCOUNTING(SimpleWindowDelegate);
 };
 
@@ -77,19 +72,11 @@ class SimpleBrowserViewDelegate : public CefBrowserViewDelegate {
   explicit SimpleBrowserViewDelegate(cef_runtime_style_t runtime_style)
       : runtime_style_(runtime_style) {}
 
-  SimpleBrowserViewDelegate(const SimpleBrowserViewDelegate&) = delete;
-  SimpleBrowserViewDelegate& operator=(const SimpleBrowserViewDelegate&) =
-      delete;
-
   bool OnPopupBrowserViewCreated(CefRefPtr<CefBrowserView> browser_view,
                                  CefRefPtr<CefBrowserView> popup_browser_view,
                                  bool is_devtools) override {
-    // Create a new top-level Window for the popup. It will show itself after
-    // creation.
     CefWindow::CreateTopLevelWindow(new SimpleWindowDelegate(
         popup_browser_view, runtime_style_, CEF_SHOW_STATE_NORMAL));
-
-    // We created the Window.
     return true;
   }
 
@@ -99,10 +86,8 @@ class SimpleBrowserViewDelegate : public CefBrowserViewDelegate {
 
  private:
   const cef_runtime_style_t runtime_style_;
-
   IMPLEMENT_REFCOUNTING(SimpleBrowserViewDelegate);
 };
-
 }  // namespace
 
 SimpleApp::SimpleApp() = default;
@@ -114,83 +99,46 @@ void SimpleApp::OnContextInitialized() {
     return;
   }
 
-  CefRefPtr<CefCommandLine> command_line =
-      CefCommandLine::GetGlobalCommandLine();
-
-  // Check if Alloy style will be used.
+  CefRefPtr<CefCommandLine> command_line = CefCommandLine::GetGlobalCommandLine();
   cef_runtime_style_t runtime_style = CEF_RUNTIME_STYLE_DEFAULT;
   bool use_alloy_style = command_line->HasSwitch("use-alloy-style");
   if (use_alloy_style) {
     runtime_style = CEF_RUNTIME_STYLE_ALLOY;
   }
 
-  // SimpleHandler implements browser-level callbacks.
   CefRefPtr<SimpleHandler> handler(new SimpleHandler(use_alloy_style));
-
-  // Specify CEF browser settings here.
   CefBrowserSettings browser_settings;
 
-  std::string url;
-
-  // Check if a "--url=" value was provided via the command-line. If so, use
-  // that instead of the default URL.
-  url = command_line->GetSwitchValue("url");
+  std::string url = command_line->GetSwitchValue("url");
   if (url.empty()) {
     url = "https://www.google.com";
   }
 
-  // Views is enabled by default (add `--use-native` to disable).
   const bool use_views = !command_line->HasSwitch("use-native");
 
-  // If using Views create the browser using the Views framework, otherwise
-  // create the browser using the native platform framework.
   if (use_views) {
-    // Create the BrowserView.
     CefRefPtr<CefBrowserView> browser_view = CefBrowserView::CreateBrowserView(
         handler, url, browser_settings, nullptr, nullptr,
         new SimpleBrowserViewDelegate(runtime_style));
 
-    // Optionally configure the initial show state.
     cef_show_state_t initial_show_state = CEF_SHOW_STATE_NORMAL;
-    const std::string& show_state_value =
-        command_line->GetSwitchValue("initial-show-state");
+    const std::string& show_state_value = command_line->GetSwitchValue("initial-show-state");
     if (show_state_value == "minimized") {
       initial_show_state = CEF_SHOW_STATE_MINIMIZED;
     } else if (show_state_value == "maximized") {
       initial_show_state = CEF_SHOW_STATE_MAXIMIZED;
     }
-#if defined(OS_MAC)
-    // Hidden show state is only supported on MacOS.
-    else if (show_state_value == "hidden") {
-      initial_show_state = CEF_SHOW_STATE_HIDDEN;
-    }
-#endif
 
-    // Create the Window. It will show itself after creation.
     CefWindow::CreateTopLevelWindow(new SimpleWindowDelegate(
         browser_view, runtime_style, initial_show_state));
   } else {
-    // Information used when creating the native window.
     CefWindowInfo window_info;
-
-#if defined(OS_WIN)
-    // On Windows we need to specify certain flags that will be passed to
-    // CreateWindowEx().
-    window_info.SetAsPopup(nullptr, "cefsimple");
-#endif
-
-    // Alloy style will create a basic native window. Chrome style will create a
-    // fully styled Chrome UI window.
     window_info.runtime_style = runtime_style;
-
-    // Create the first browser window.
-    CefBrowserHost::CreateBrowser(window_info, handler, url, browser_settings,
-                                  nullptr, nullptr);
+    CefBrowserHost::CreateBrowser(window_info, handler, url, browser_settings, nullptr, nullptr);
   }
 }
 
 CefRefPtr<CefClient> SimpleApp::GetDefaultClient() {
-  // Called when a new browser window is created via Chrome style UI.
   return SimpleHandler::GetInstance();
 }
 
@@ -200,8 +148,7 @@ void SimpleApp::CreateBrowserWindow(const std::string& url_or_html,
                                     const std::string& window_id) {
   CEF_REQUIRE_UI_THREAD();
 
-  CefRefPtr<CefCommandLine> command_line =
-      CefCommandLine::GetGlobalCommandLine();
+  CefRefPtr<CefCommandLine> command_line = CefCommandLine::GetGlobalCommandLine();
   bool use_alloy_style = command_line->HasSwitch("use-alloy-style");
   cef_runtime_style_t runtime_style =
       use_alloy_style ? CEF_RUNTIME_STYLE_ALLOY : CEF_RUNTIME_STYLE_DEFAULT;
@@ -215,8 +162,7 @@ void SimpleApp::CreateBrowserWindow(const std::string& url_or_html,
 
   std::string url = url_or_html;
   if (url_or_html.find("<") != std::string::npos) {
-    url = "data:text/html;charset=utf-8," +
-          CefURIEncode(url_or_html, false).ToString();
+    url = "data:text/html;charset=utf-8," + CefURIEncode(url_or_html, false).ToString();
   }
 
   const bool use_views = !command_line->HasSwitch("use-native");
@@ -231,7 +177,76 @@ void SimpleApp::CreateBrowserWindow(const std::string& url_or_html,
   } else {
     CefWindowInfo window_info;
     window_info.runtime_style = runtime_style;
-    CefBrowserHost::CreateBrowser(window_info, handler, url, browser_settings,
-                                  nullptr, nullptr);
+    CefBrowserHost::CreateBrowser(window_info, handler, url, browser_settings, nullptr, nullptr);
   }
+}
+
+// RenderHandler implementation
+
+CefRefPtr<CefV8Value> RenderHandler::on_message_callback_ = nullptr;
+
+void RenderHandler::OnContextCreated(CefRefPtr<CefBrowser> browser,
+                                     CefRefPtr<CefFrame> frame,
+                                     CefRefPtr<CefV8Context> context) {
+  CEF_REQUIRE_RENDERER_THREAD();
+
+  CefRefPtr<CefV8Value> global = context->GetGlobal();
+
+  CefRefPtr<CefV8Handler> send_handler = new SendV8Handler();
+  CefRefPtr<CefV8Value> send_func = CefV8Value::CreateFunction("sendToNative", send_handler);
+  global->SetValue("sendToNative", send_func, V8_PROPERTY_ATTRIBUTE_NONE);
+
+  CefRefPtr<CefV8Value> on_message = CefV8Value::CreateUndefined();
+  global->SetValue("onMessage", on_message, V8_PROPERTY_ATTRIBUTE_NONE);
+}
+
+bool RenderHandler::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
+                                            CefRefPtr<CefFrame> frame,
+                                            CefProcessId source_process,
+                                            CefRefPtr<CefProcessMessage> message) {
+  CEF_REQUIRE_RENDERER_THREAD();
+
+  if (message->GetName() == "from-backend") {
+    CefRefPtr<CefListValue> args = message->GetArgumentList();
+    std::string json_str = args->GetString(0).ToString();
+
+    CefRefPtr<CefV8Context> context = frame->GetV8Context();
+    context->Enter();
+
+    CefRefPtr<CefV8Value> global = context->GetGlobal();
+    CefRefPtr<CefV8Value> callback = global->GetValue("onMessage");
+
+    if (callback && callback->IsFunction()) {
+      CefV8ValueList argv;
+      argv.push_back(CefV8Value::CreateString(json_str));
+      callback->ExecuteFunction(nullptr, argv);
+    }
+
+    context->Exit();
+    return true;
+  }
+
+  return false;
+}
+
+bool SendV8Handler::Execute(const CefString& name,
+                            CefRefPtr<CefV8Value> object,
+                            const CefV8ValueList& arguments,
+                            CefRefPtr<CefV8Value>& retval,
+                            CefString& exception) {
+  CEF_REQUIRE_RENDERER_THREAD();
+
+  if (arguments.size() > 0 && arguments[0]->IsString()) {
+    std::string msg = arguments[0]->GetStringValue().ToString();
+    CefRefPtr<CefProcessMessage> out_msg = CefProcessMessage::Create("from-renderer");
+    out_msg->GetArgumentList()->SetString(0, msg);
+    CefV8Context::GetCurrentContext()->GetBrowser()->GetMainFrame()->SendProcessMessage(
+        PID_BROWSER, out_msg);
+  } else if (arguments.size() > 0) {
+    exception = "Argument must be a string";
+  } else {
+    exception = "Missing argument";
+  }
+
+  return true;
 }

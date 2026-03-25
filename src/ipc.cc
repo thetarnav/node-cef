@@ -1,4 +1,4 @@
-#include "ipc_client.h"
+#include "ipc.h"
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>

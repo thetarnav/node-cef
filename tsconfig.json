@@ -2,6 +2,7 @@
   "compilerOptions": {
     // Language and Environment
     "lib": ["ESNext"],
+    "types": ["bun"],
     "target": "ESNext",
 
     // Module Resolution
@@ -23,15 +24,8 @@
     "noUnusedParameters": true,
     "noPropertyAccessFromIndexSignature": false,
 
-    // Emit type declarations
-    "outDir": "./types",
-    "declaration": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": true,
-
-    // Build Performance
-    "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
+    // No Emit
+    "noEmit": true,
   },
-  "include": ["src/ts"],
-  "exclude": ["node_modules", "types"],
+  "exclude": ["node_modules", "types", "cef", "build"],
 }

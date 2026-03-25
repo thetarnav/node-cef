@@ -1,8 +1,4 @@
-// Copyright (c) 2013 The Chromium Embedded Framework Authors. All rights
-// reserved. Use of this source code is governed by a BSD-style license that
-// can be found in the LICENSE file.
-
-#include "simple_handler.h"
+#include "handler.h"
 
 #include <sstream>
 #include <string>
@@ -19,18 +15,14 @@ namespace {
 
 SimpleHandler* g_instance = nullptr;
 
-// Returns a data: URI with the specified contents.
 std::string GetDataURI(const std::string& data, const std::string& mime_type) {
   return "data:" + mime_type + ";base64," +
-         CefURIEncode(CefBase64Encode(data.data(), data.size()), false)
-             .ToString();
+         CefURIEncode(CefBase64Encode(data.data(), data.size()), false).ToString();
 }
 
 }  // namespace
 
-SimpleHandler::SimpleHandler(bool is_alloy_style)
-    : is_alloy_style_(is_alloy_style) {
-  DCHECK(!g_instance);
+SimpleHandler::SimpleHandler(bool is_alloy_style) : is_alloy_style_(is_alloy_style) {
   g_instance = this;
 }
 
@@ -38,23 +30,19 @@ SimpleHandler::~SimpleHandler() {
   g_instance = nullptr;
 }
 
-// static
 SimpleHandler* SimpleHandler::GetInstance() {
   return g_instance;
 }
 
-void SimpleHandler::OnTitleChange(CefRefPtr<CefBrowser> browser,
-                                  const CefString& title) {
+void SimpleHandler::OnTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title) {
   CEF_REQUIRE_UI_THREAD();
 
   if (auto browser_view = CefBrowserView::GetForBrowser(browser)) {
-    // Set the title of the window using the Views framework.
     CefRefPtr<CefWindow> window = browser_view->GetWindow();
     if (window) {
       window->SetTitle(title);
     }
   } else if (is_alloy_style_) {
-    // Set the title of the window using platform APIs.
     PlatformTitleChange(browser, title);
   }
 }
@@ -62,14 +50,8 @@ void SimpleHandler::OnTitleChange(CefRefPtr<CefBrowser> browser,
 void SimpleHandler::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
   CEF_REQUIRE_UI_THREAD();
 
-  // Sanity-check the configured runtime style.
-  CHECK_EQ(is_alloy_style_ ? CEF_RUNTIME_STYLE_ALLOY : CEF_RUNTIME_STYLE_CHROME,
-           browser->GetHost()->GetRuntimeStyle());
-
-  // Add to the list of existing browsers.
   browser_list_.push_back(browser);
 
-  // Associate with pending window ID if any
   std::string pending_id = GetAndClearPendingWindowId();
   if (!pending_id.empty()) {
     SetWindowId(browser, pending_id);
@@ -78,24 +60,15 @@ void SimpleHandler::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
 
 bool SimpleHandler::DoClose(CefRefPtr<CefBrowser> browser) {
   CEF_REQUIRE_UI_THREAD();
-
-  // Closing the main window requires special handling. See the DoClose()
-  // documentation in the CEF header for a detailed destription of this
-  // process.
   if (browser_list_.size() == 1) {
-    // Set a flag to indicate that the window close should be allowed.
     is_closing_ = true;
   }
-
-  // Allow the close. For windowed browsers this will result in the OS close
-  // event being sent.
   return false;
 }
 
 void SimpleHandler::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
   CEF_REQUIRE_UI_THREAD();
 
-  // Find window_id before removing
   std::string window_id;
   {
     std::lock_guard<std::mutex> lock(window_map_mutex_);
@@ -107,7 +80,6 @@ void SimpleHandler::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
     }
   }
 
-  // Remove from the list of existing browsers.
   BrowserList::iterator bit = browser_list_.begin();
   for (; bit != browser_list_.end(); ++bit) {
     if ((*bit)->IsSame(browser)) {
@@ -116,7 +88,6 @@ void SimpleHandler::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
     }
   }
 
-  // Notify about window close
   if (!window_id.empty()) {
     std::lock_guard<std::mutex> lock(close_callback_mutex_);
     if (window_close_callback_) {
@@ -126,7 +97,6 @@ void SimpleHandler::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
   }
 
   if (browser_list_.empty()) {
-    // All browser windows have closed. Quit the application message loop.
     CefQuitMessageLoop();
   }
 }
@@ -138,17 +108,9 @@ void SimpleHandler::OnLoadError(CefRefPtr<CefBrowser> browser,
                                 const CefString& failedUrl) {
   CEF_REQUIRE_UI_THREAD();
 
-  // Allow Chrome to show the error page.
-  if (!is_alloy_style_) {
-    return;
-  }
+  if (!is_alloy_style_) return;
+  if (errorCode == ERR_ABORTED) return;
 
-  // Don't display an error for downloaded files.
-  if (errorCode == ERR_ABORTED) {
-    return;
-  }
-
-  // Display a load error message using a data: URI.
   std::stringstream ss;
   ss << "<html><body bgcolor=\"white\">"
         "<h2>Failed to load URL "
@@ -160,19 +122,15 @@ void SimpleHandler::OnLoadError(CefRefPtr<CefBrowser> browser,
 
 void SimpleHandler::ShowMainWindow() {
   if (!CefCurrentlyOn(TID_UI)) {
-    // Execute on the UI thread.
     CefPostTask(TID_UI, base::BindOnce(&SimpleHandler::ShowMainWindow, this));
     return;
   }
 
-  if (browser_list_.empty()) {
-    return;
-  }
+  if (browser_list_.empty()) return;
 
   auto main_browser = browser_list_.front();
 
   if (auto browser_view = CefBrowserView::GetForBrowser(main_browser)) {
-    // Show the window using the Views framework.
     if (auto window = browser_view->GetWindow()) {
       window->Show();
     }
@@ -183,15 +141,11 @@ void SimpleHandler::ShowMainWindow() {
 
 void SimpleHandler::CloseAllBrowsers(bool force_close) {
   if (!CefCurrentlyOn(TID_UI)) {
-    // Execute on the UI thread.
-    CefPostTask(TID_UI, base::BindOnce(&SimpleHandler::CloseAllBrowsers, this,
-                                       force_close));
+    CefPostTask(TID_UI, base::BindOnce(&SimpleHandler::CloseAllBrowsers, this, force_close));
     return;
   }
 
-  if (browser_list_.empty()) {
-    return;
-  }
+  if (browser_list_.empty()) return;
 
   for (const auto& browser : browser_list_) {
     browser->GetHost()->CloseBrowser(force_close);
@@ -200,7 +154,7 @@ void SimpleHandler::CloseAllBrowsers(bool force_close) {
 
 #if !defined(OS_MAC)
 void SimpleHandler::PlatformShowWindow(CefRefPtr<CefBrowser> browser) {
-  NOTIMPLEMENTED();
+  // Not implemented on Linux
 }
 #endif
 
@@ -246,12 +200,10 @@ void SimpleHandler::SetWindowCloseCallback(std::function<void(const std::string&
 }
 
 bool SimpleHandler::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
-                                           CefRefPtr<CefFrame> frame,
-                                           CefProcessId source_process,
-                                           CefRefPtr<CefProcessMessage> message) {
-  if (source_process != PID_RENDERER) {
-    return false;
-  }
+                                             CefRefPtr<CefFrame> frame,
+                                             CefProcessId source_process,
+                                             CefRefPtr<CefProcessMessage> message) {
+  if (source_process != PID_RENDERER) return false;
 
   std::string msg_name = message->GetName().ToString();
   if (msg_name == "from-renderer") {
@@ -259,7 +211,6 @@ bool SimpleHandler::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
     if (args && args->GetSize() >= 1) {
       std::string msg_content = args->GetString(0).ToString();
 
-      // Find window_id by browser
       std::string window_id;
       {
         std::lock_guard<std::mutex> lock(window_map_mutex_);

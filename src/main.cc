@@ -1,21 +1,21 @@
-#include "combined_app.h"
+#include "app.h"
+#include "handler.h"
+#include "ipc.h"
 
-#if defined(CEF_X11)
-#include <X11/Xlib.h>
-#include <chrono>
-#include <thread>
-#endif
-
-#include "include/base/cef_logging.h"
-#include "include/cef_command_line.h"
-#include "include/wrapper/cef_closure_task.h"
-#include "simple_handler.h"
-#include "ipc_client.h"
 #include <string>
 #include <memory>
 #include <mutex>
 #include <atomic>
 #include <functional>
+
+#if defined(CEF_X11)
+#include <X11/Xatom.h>
+#include <X11/Xlib.h>
+#endif
+
+#include "include/base/cef_logging.h"
+#include "include/cef_command_line.h"
+#include "include/wrapper/cef_closure_task.h"
 
 #if defined(CEF_X11)
 namespace {
@@ -91,6 +91,27 @@ void PostClosureToUI(std::function<void()> fn) {
 }
 
 void OnIPCMessage(const std::string& msg);
+
+#if defined(CEF_X11)
+void SimpleHandler::PlatformTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title) {
+    std::string titleStr(title);
+    ::Display* display = cef_get_xdisplay();
+    if (!display) return;
+
+    ::Window window = browser->GetHost()->GetWindowHandle();
+    if (window == kNullWindowHandle) return;
+
+    const char* kAtoms[] = {"_NET_WM_NAME", "UTF8_STRING"};
+    Atom atoms[2];
+    int result = XInternAtoms(display, const_cast<char**>(kAtoms), 2, false, atoms);
+    if (!result) return;
+
+    XChangeProperty(display, window, atoms[0], atoms[1], 8, PropModeReplace,
+                    reinterpret_cast<const unsigned char*>(titleStr.c_str()),
+                    titleStr.size());
+    XStoreName(display, window, titleStr.c_str());
+}
+#endif
 
 NO_STACK_PROTECTOR
 int main(int argc, char* argv[]) {

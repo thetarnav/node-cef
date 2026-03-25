@@ -1,4 +1,4 @@
-import * as cef from '../src/ts/index.ts'
+import * as cef from '../src/index.ts'
 import * as bun from 'bun'
 import * as path from 'node:path'
 

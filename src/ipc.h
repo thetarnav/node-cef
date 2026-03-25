@@ -16,7 +16,6 @@ public:
     void disconnect();
     void send(const std::string& msg);
     void setMessageCallback(MessageCallback cb);
-
     bool isConnected() const { return connected_; }
 
 private:

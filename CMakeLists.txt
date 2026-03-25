@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # CEF root directory (downloaded by scripts/download-cef.ts)
 # Override with -DCEF_ROOT=/path/to/cef on cmake command line if needed
 if(NOT DEFINED CEF_ROOT)
-    set(CEF_ROOT "../../../cef/linux64")
+    set(CEF_ROOT "cef/linux64")
 endif()
 if(IS_ABSOLUTE "${CEF_ROOT}")
     set(CEF_ROOT_ABS "${CEF_ROOT}")
@@ -30,12 +30,10 @@ include_directories(
 
 # Source files
 set(SOURCES
-    cefsimple_linux.cc
-    simple_app.cc
-    simple_handler.cc
-    simple_handler_linux.cc
-    ipc_client.cpp
-    render_handler.cc
+    src/main.cc
+    src/app.cc
+    src/handler.cc
+    src/ipc.cc
 )
 
 add_executable(cef_host ${SOURCES})
