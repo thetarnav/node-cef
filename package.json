@@ -1,5 +1,5 @@
 {
-  "name": "bun-cef",
+  "name": "node-cef",
   "type": "module",
   "main": "src/index.ts",
   "module": "src/index.ts",
