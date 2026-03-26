@@ -47,10 +47,10 @@ The library uses a Node.js addon approach:
 
 | C++ Component | Purpose |
 |--------------|---------|
-| `BridgeClient` | Browser lifecycle, message handling |
-| `BridgeRenderProcessHandler` | V8 context, injects cef object |
-| `NativeSendHandler` | Handles `cef.send()` in renderer |
-| `TsfnCallJs` | Calls JS callback from CEF thread |
+| `Bridge_Client` | Browser lifecycle, message handling |
+| `Bridge_Render_Process_Handler` | V8 context, injects cef object |
+| `Native_Send_Handler` | Handles `cef.send()` in renderer |
+| `tsfn_call_js` | Calls JS callback from CEF thread |
 
 ## Import and Module Conventions
 
@@ -71,7 +71,7 @@ The library uses a Node.js addon approach:
 ## C++ Conventions
 
 - **Single source file** - all C++ code in `src/cef_bridge.cc`
-- **Conditional compilation** - `#ifdef BUILDING_ADDON` for addon vs helper
+- **Conditional compilation** - `#ifdef CEF_HELPER_BINARY` for helper vs addon
 - **CEF headers** - include from `cef/linux64/include/`
 - **No exceptions in helper** - built with `-fno-exceptions -fno-rtti`
 - **Addons use exceptions** - built with `-fexceptions -frtti`

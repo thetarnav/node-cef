@@ -23,24 +23,13 @@
 #include "cef_scheme.h"
 #include "cef_task.h"
 #include "cef_v8.h"
-#include "cef_task.h"
 #include "base/cef_callback.h"
 #include "wrapper/cef_closure_task.h"
 #include "wrapper/cef_helpers.h"
 
-#if !defined(CEF_HELPER_BINARY)
-	#include <node_api.h>
-
-	#if defined(_WIN32)
-		#include <windows.h>
-	#else
-		#include <dlfcn.h>
-	#endif
-#endif
-
 namespace {
 
-static std::string JsQuote(const std::string& s) {
+std::string js_quote(const std::string& s) {
 	std::string out;
 	out.reserve(s.size() + 16);
 	out.push_back('"');
@@ -60,7 +49,7 @@ static std::string JsQuote(const std::string& s) {
 	return out;
 }
 
-static std::string MakeBridgeInstallJs() {
+std::string make_bridge_install_js() {
 	return R"JS(
 (function() {
 	const b = window.cef
@@ -97,15 +86,15 @@ static std::string MakeBridgeInstallJs() {
 )JS";
 }
 
-static std::string MakeDispatchJs(const std::string& msg) {
+std::string make_dispatch_js(const std::string& msg) {
 	return "(function(m){"
 		"if (window.cef && window.cef.onmessage) window.cef.onmessage(m);"
 		"else if (window.onmessage) window.onmessage(m);"
 		"else if (window.cef) window.cef._queue.push(m);"
-	"})(" + JsQuote(msg) + ");";
+	"})(" + js_quote(msg) + ");";
 }
 
-class NativeSendHandler final : public CefV8Handler {
+class Native_Send_Handler final : public CefV8Handler {
 public:
 	bool Execute(
 		const CefString& name,
@@ -144,14 +133,14 @@ public:
 	}
 
 private:
-	IMPLEMENT_REFCOUNTING(NativeSendHandler);
+	IMPLEMENT_REFCOUNTING(Native_Send_Handler);
 };
 
-static std::mutex g_render_mutex;
-static std::unordered_map<int, std::vector<std::string>> g_pending_host_messages;
-static std::unordered_map<int, bool> g_context_ready;
+std::mutex g_render_mutex;
+std::unordered_map<int, std::vector<std::string>> g_pending_host_messages;
+std::unordered_map<int, bool> g_context_ready;
 
-class BridgeRenderProcessHandler final : public CefRenderProcessHandler {
+class Bridge_Render_Process_Handler final : public CefRenderProcessHandler {
 public:
 	void OnContextCreated(
 		CefRefPtr<CefBrowser> browser,
@@ -167,25 +156,21 @@ public:
 
 		auto global = context->GetGlobal();
 
-		// Create window.cef object with queue and onmessage
 		auto cef_obj = CefV8Value::CreateObject(nullptr, nullptr);
 
-		// _queue array
 		auto queue = CefV8Value::CreateArray(0);
 		cef_obj->SetValue("_queue", queue, V8_PROPERTY_ATTRIBUTE_NONE);
 
-		// onmessage property with getter/setter
 		cef_obj->SetValue("onmessage",
 			CefV8Value::CreateUndefined(),
 			V8_PROPERTY_ATTRIBUTE_NONE);
 
-		// send function
-		auto send_fn = CefV8Value::CreateFunction("send", new NativeSendHandler());
+		auto send_fn = CefV8Value::CreateFunction("send", new Native_Send_Handler());
 		cef_obj->SetValue("send", send_fn, V8_PROPERTY_ATTRIBUTE_NONE);
 
 		global->SetValue("cef", cef_obj, V8_PROPERTY_ATTRIBUTE_NONE);
 
-		frame->ExecuteJavaScript(MakeBridgeInstallJs(), frame->GetURL(), 0);
+		frame->ExecuteJavaScript(make_bridge_install_js(), frame->GetURL(), 0);
 
 		std::vector<std::string> pending;
 		{
@@ -199,7 +184,7 @@ public:
 		}
 
 		for (const auto& msg : pending) {
-			frame->ExecuteJavaScript(MakeDispatchJs(msg), frame->GetURL(), 0);
+			frame->ExecuteJavaScript(make_dispatch_js(msg), frame->GetURL(), 0);
 		}
 	}
 
@@ -261,15 +246,15 @@ public:
 			}
 		}
 
-		frame->ExecuteJavaScript(MakeDispatchJs(text), frame->GetURL(), 0);
+		frame->ExecuteJavaScript(make_dispatch_js(text), frame->GetURL(), 0);
 		return true;
 	}
 
 private:
-	IMPLEMENT_REFCOUNTING(BridgeRenderProcessHandler);
+	IMPLEMENT_REFCOUNTING(Bridge_Render_Process_Handler);
 };
 
-class BridgeApp final : public CefApp, public CefRenderProcessHandler {
+class Bridge_App final : public CefApp, public CefRenderProcessHandler {
 public:
 	CefRefPtr<CefRenderProcessHandler> GetRenderProcessHandler() override {
 		return this;
@@ -310,21 +295,29 @@ public:
 	}
 
 private:
-	BridgeRenderProcessHandler render_handler_;
+	Bridge_Render_Process_Handler render_handler_;
 
-	IMPLEMENT_REFCOUNTING(BridgeApp);
+	IMPLEMENT_REFCOUNTING(Bridge_App);
 };
 
 } // namespace
 
 #if !defined(CEF_HELPER_BINARY)
 
+#include <node_api.h>
+
+#if defined(_WIN32)
+	#include <windows.h>
+#else
+	#include <dlfcn.h>
+#endif
+
 namespace {
 
-static std::mutex g_mutex;
-static std::condition_variable g_cv;
+std::mutex g_mutex;
+std::condition_variable g_cv;
 
-struct BrowserState {
+struct Browser_State {
 	int token = 0;
 	int browser_id = -1;
 	CefRefPtr<CefBrowser> browser;
@@ -333,22 +326,22 @@ struct BrowserState {
 	std::string url;
 };
 
-static std::unordered_map<int, std::vector<std::string>> g_pending_to_renderer;
+std::unordered_map<int, std::vector<std::string>> g_pending_to_renderer;
 
-static std::unordered_map<int, std::shared_ptr<BrowserState>> g_states_by_token;
-static std::unordered_map<int, int> g_token_by_browser_id;
-static std::atomic<int> g_next_token{1};
+std::unordered_map<int, std::shared_ptr<Browser_State>> g_states_by_token;
+std::unordered_map<int, int> g_token_by_browser_id;
+std::atomic<int> g_next_token{1};
 
-static std::atomic<bool> g_cef_initialized{false};
-static std::atomic<bool> g_shutdown_requested{false};
-static std::atomic<bool> g_atexit_registered{false};
-static std::string g_cef_root;
-static std::string g_browser_subprocess_path;
+std::atomic<bool> g_cef_initialized{false};
+std::atomic<bool> g_shutdown_requested{false};
+std::atomic<bool> g_atexit_registered{false};
+std::string g_cef_root;
+std::string g_browser_subprocess_path;
 
-static CefRefPtr<BridgeApp> g_app;
-static int g_active_browser_count = 0;
+CefRefPtr<Bridge_App> g_app;
+int g_active_browser_count = 0;
 
-static std::string NapiGetString(napi_env env, napi_value value) {
+std::string napi_get_string(napi_env env, napi_value value) {
 	size_t len = 0;
 	napi_get_value_string_utf8(env, value, nullptr, 0, &len);
 	std::string out(len + 1, '\0');
@@ -357,18 +350,18 @@ static std::string NapiGetString(napi_env env, napi_value value) {
 	return out;
 }
 
-static napi_value NapiMakeUndefined(napi_env env) {
+napi_value napi_make_undefined(napi_env env) {
 	napi_value v;
 	napi_get_undefined(env, &v);
 	return v;
 }
 
-static std::string ModulePath() {
+std::string module_path() {
 #if defined(_WIN32)
 	HMODULE module = nullptr;
 	GetModuleHandleExA(
 		GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-		reinterpret_cast<LPCSTR>(&ModulePath),
+		reinterpret_cast<LPCSTR>(&module_path),
 		&module
 	);
 
@@ -377,14 +370,14 @@ static std::string ModulePath() {
 	return std::string(buffer, buffer + len);
 #else
 	Dl_info info{};
-	if (dladdr(reinterpret_cast<void*>(&ModulePath), &info) && info.dli_fname) {
+	if (dladdr(reinterpret_cast<void*>(&module_path), &info) && info.dli_fname) {
 		return info.dli_fname;
 	}
 	return {};
 #endif
 }
 
-static std::string DirName(const std::string& path) {
+std::string dir_name(const std::string& path) {
 	const size_t pos = path.find_last_of("/\\");
 	if (pos == std::string::npos) {
 		return ".";
@@ -392,7 +385,7 @@ static std::string DirName(const std::string& path) {
 	return path.substr(0, pos);
 }
 
-static std::string JoinPath(const std::string& dir, const std::string& file) {
+std::string join_path(const std::string& dir, const std::string& file) {
 	if (dir.empty()) {
 		return file;
 	}
@@ -403,34 +396,25 @@ static std::string JoinPath(const std::string& dir, const std::string& file) {
 #endif
 }
 
-static std::string ResolveCefRoot() {
+std::string resolve_cef_root() {
 	if (!g_cef_root.empty()) {
 		return g_cef_root;
 	}
-	// Try to find where libcef.so was loaded from using a symbol that lives in it
-	// Use a CEF function that exists in libcef.so
 	void* handle = dlopen("libcef.so", RTLD_NOLOAD);
 	if (handle) {
-		// Now find where libcef.so is loaded
 		Dl_info info;
-		// Try to get info on any CEF symbol - use CefInitialize as it's definitely in libcef
-		// We can't call it without initializing, but we can look it up
-		// Instead, just use the handle directly - but dladdr needs a function address
-		// Let's use dlsym to find a CEF function first
 		void* cef_sym = dlsym(handle, "CefInitialize");
 		if (cef_sym && dladdr(cef_sym, &info) && info.dli_fname) {
-			// libcef.so is loaded here - use this directory
-			std::string libcef_dir = DirName(info.dli_fname);
+			std::string libcef_dir = dir_name(info.dli_fname);
 			dlclose(handle);
 			return libcef_dir;
 		}
 		dlclose(handle);
 	}
-	// Fallback to addon location
-	return DirName(ModulePath());
+	return dir_name(module_path());
 }
 
-static void SendToPageOnUi(CefRefPtr<CefBrowser> browser, std::string msg) {
+void send_to_page_on_ui(CefRefPtr<CefBrowser> browser, std::string msg) {
 	CEF_REQUIRE_UI_THREAD();
 
 	if (!browser || !browser->GetMainFrame()) {
@@ -444,11 +428,11 @@ static void SendToPageOnUi(CefRefPtr<CefBrowser> browser, std::string msg) {
 	browser->GetMainFrame()->SendProcessMessage(PID_RENDERER, message);
 }
 
-static void CreateBrowserOnUi(std::shared_ptr<BrowserState> state);
+void create_browser_on_ui(std::shared_ptr<Browser_State> state);
 
-class BridgeClient final : public CefClient, public CefLifeSpanHandler {
+class Bridge_Client final : public CefClient, public CefLifeSpanHandler {
 public:
-	explicit BridgeClient(std::shared_ptr<BrowserState> state)
+	explicit Bridge_Client(std::shared_ptr<Browser_State> state)
 		: state_(std::move(state)) {}
 
 	CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override {
@@ -476,7 +460,7 @@ public:
 		}
 
 		for (const auto& msg : queued) {
-			SendToPageOnUi(browser, msg);
+			send_to_page_on_ui(browser, msg);
 		}
 
 		if (close_now) {
@@ -492,7 +476,7 @@ public:
 	void OnBeforeClose(CefRefPtr<CefBrowser> browser) override {
 		CEF_REQUIRE_UI_THREAD();
 
-		std::shared_ptr<BrowserState> state;
+		std::shared_ptr<Browser_State> state;
 		{
 			std::lock_guard<std::mutex> lock(g_mutex);
 			const int browser_id = browser->GetIdentifier();
@@ -541,7 +525,7 @@ public:
 		const int browser_id = browser->GetIdentifier();
 		const std::string text = list->GetString(0).ToString();
 
-		std::shared_ptr<BrowserState> state;
+		std::shared_ptr<Browser_State> state;
 		{
 			std::lock_guard<std::mutex> lock(g_mutex);
 			auto it_token = g_token_by_browser_id.find(browser_id);
@@ -572,12 +556,12 @@ public:
 	}
 
 private:
-	std::shared_ptr<BrowserState> state_;
+	std::shared_ptr<Browser_State> state_;
 
-	IMPLEMENT_REFCOUNTING(BridgeClient);
+	IMPLEMENT_REFCOUNTING(Bridge_Client);
 };
 
-static void CreateBrowserOnUi(std::shared_ptr<BrowserState> state) {
+void create_browser_on_ui(std::shared_ptr<Browser_State> state) {
 	CEF_REQUIRE_UI_THREAD();
 
 	if (g_shutdown_requested.load()) {
@@ -589,7 +573,7 @@ static void CreateBrowserOnUi(std::shared_ptr<BrowserState> state) {
 
 	CefBrowserSettings browser_settings;
 
-	auto client = new BridgeClient(state);
+	auto client = new Bridge_Client(state);
 	CefBrowserHost::CreateBrowser(
 		window_info,
 		client,
@@ -600,14 +584,14 @@ static void CreateBrowserOnUi(std::shared_ptr<BrowserState> state) {
 	);
 }
 
-static void RegisterAtexitOnce() {
+void register_atexit_once() {
 	if (g_atexit_registered.exchange(true)) {
 		return;
 	}
 
 	std::atexit([]() {
 		if (g_cef_initialized.load()) {
-			std::vector<std::shared_ptr<BrowserState>> no_browser_states;
+			std::vector<std::shared_ptr<Browser_State>> no_browser_states;
 			std::vector<CefRefPtr<CefBrowser>> browsers_to_close;
 
 			{
@@ -660,12 +644,12 @@ static void RegisterAtexitOnce() {
 	});
 }
 
-static void EnsureCefInitialized() {
+void ensure_cef_initialized() {
 	if (g_cef_initialized.load()) {
 		return;
 	}
 
-	RegisterAtexitOnce();
+	register_atexit_once();
 
 	CefMainArgs main_args;
 	CefSettings settings;
@@ -677,22 +661,20 @@ static void EnsureCefInitialized() {
 		cwd[0] = '\0';
 	}
 
-	// Set resources directory from g_cef_root or detect from module path
-	std::string cef_root = ResolveCefRoot();
+	std::string cef_root = resolve_cef_root();
 	char abs_cef_root[4096];
 	if (!realpath(cef_root.c_str(), abs_cef_root)) {
 		strcpy(abs_cef_root, cef_root.c_str());
 	}
-	// Resources are in a "Resources" subdirectory (CEF distribution structure)
-	const std::string resources_dir = JoinPath(abs_cef_root, "Resources");
-	const std::string locales_dir = JoinPath(resources_dir, "locales");
-	const std::string helper = JoinPath(abs_cef_root, "cef_bridge_helper");
+	const std::string resources_dir = join_path(abs_cef_root, "Resources");
+	const std::string locales_dir = join_path(resources_dir, "locales");
+	const std::string helper = join_path(abs_cef_root, "cef_bridge_helper");
 	fprintf(stderr, "DEBUG: cef_root=%s, resources_dir=%s, locales_dir=%s, helper=%s\n", abs_cef_root, resources_dir.c_str(), locales_dir.c_str(), helper.c_str());
 	CefString(&settings.resources_dir_path) = resources_dir;
 	CefString(&settings.locales_dir_path) = locales_dir;
 	CefString(&settings.browser_subprocess_path) = helper;
 
-	g_app = new BridgeApp();
+	g_app = new Bridge_App();
 
 	if (!CefInitialize(main_args, settings, g_app.get(), nullptr)) {
 		throw std::runtime_error("CefInitialize failed");
@@ -701,7 +683,7 @@ static void EnsureCefInitialized() {
 	g_cef_initialized = true;
 }
 
-static void TsfnCallJs(
+void tsfn_call_js(
 	napi_env env,
 	napi_value js_cb,
 	void* /*context*/,
@@ -718,7 +700,7 @@ static void TsfnCallJs(
 	napi_open_handle_scope(env, &scope);
 
 	napi_value argv[1];
-	argv[0] = NapiMakeUndefined(env);
+	argv[0] = napi_make_undefined(env);
 	napi_create_string_utf8(env, msg->c_str(), msg->size(), &argv[0]);
 
 	napi_value global;
@@ -731,12 +713,12 @@ static void TsfnCallJs(
 	delete msg;
 }
 
-static void ShutdownCore() {
+void shutdown_core() {
 	if (!g_cef_initialized.load()) {
 		return;
 	}
 
-	std::vector<std::shared_ptr<BrowserState>> no_browser_states;
+	std::vector<std::shared_ptr<Browser_State>> no_browser_states;
 	std::vector<CefRefPtr<CefBrowser>> browsers_to_close;
 
 	{
@@ -788,7 +770,7 @@ static void ShutdownCore() {
 	g_shutdown_requested = false;
 }
 
-static napi_value Init(napi_env env, napi_callback_info info) {
+napi_value init(napi_env env, napi_callback_info info) {
 	size_t argc = 1;
 	napi_value args[1];
 	napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
@@ -805,17 +787,17 @@ static napi_value Init(napi_env env, napi_callback_info info) {
 			napi_has_named_property(env, args[0], "browserSubprocessPath", &has_subprocess);
 			if (has_subprocess) {
 				napi_get_named_property(env, args[0], "browserSubprocessPath", &path_value);
-				g_browser_subprocess_path = NapiGetString(env, path_value);
+				g_browser_subprocess_path = napi_get_string(env, path_value);
 			}
 		}
 	}
 
-	EnsureCefInitialized();
-	return NapiMakeUndefined(env);
+	ensure_cef_initialized();
+	return napi_make_undefined(env);
 }
 
-static napi_value CreateWindow(napi_env env, napi_callback_info info) {
-	EnsureCefInitialized();
+napi_value create_window(napi_env env, napi_callback_info info) {
+	ensure_cef_initialized();
 
 	size_t argc = 2;
 	napi_value args[2];
@@ -831,7 +813,7 @@ static napi_value CreateWindow(napi_env env, napi_callback_info info) {
 		return nullptr;
 	}
 
-	std::string url = NapiGetString(env, args[0]);
+	std::string url = napi_get_string(env, args[0]);
 
 	napi_valuetype type;
 	napi_typeof(env, args[1], &type);
@@ -840,7 +822,7 @@ static napi_value CreateWindow(napi_env env, napi_callback_info info) {
 		return nullptr;
 	}
 
-	auto state = std::make_shared<BrowserState>();
+	auto state = std::make_shared<Browser_State>();
 	state->token = g_next_token.fetch_add(1);
 	state->url = url;
 
@@ -857,7 +839,7 @@ static napi_value CreateWindow(napi_env env, napi_callback_info info) {
 		nullptr,
 		nullptr,
 		nullptr,
-		TsfnCallJs,
+		tsfn_call_js,
 		&state->tsfn
 	);
 
@@ -871,15 +853,15 @@ static napi_value CreateWindow(napi_env env, napi_callback_info info) {
 		g_states_by_token[state->token] = state;
 	}
 
-	CefPostTask(TID_UI, base::BindOnce(&CreateBrowserOnUi, state));
+	CefPostTask(TID_UI, base::BindOnce(&create_browser_on_ui, state));
 
 	napi_value out;
 	napi_create_int32(env, state->token, &out);
 	return out;
 }
 
-static napi_value Send(napi_env env, napi_callback_info info) {
-	EnsureCefInitialized();
+napi_value send(napi_env env, napi_callback_info info) {
+	ensure_cef_initialized();
 
 	size_t argc = 2;
 	napi_value args[2];
@@ -897,9 +879,9 @@ static napi_value Send(napi_env env, napi_callback_info info) {
 
 	int32_t token = 0;
 	napi_get_value_int32(env, args[0], &token);
-	std::string msg = NapiGetString(env, args[1]);
+	std::string msg = napi_get_string(env, args[1]);
 
-	std::shared_ptr<BrowserState> state;
+	std::shared_ptr<Browser_State> state;
 	CefRefPtr<CefBrowser> browser;
 
 	{
@@ -930,10 +912,10 @@ static napi_value Send(napi_env env, napi_callback_info info) {
 		));
 	}
 
-	return NapiMakeUndefined(env);
+	return napi_make_undefined(env);
 }
 
-static napi_value Close(napi_env env, napi_callback_info info) {
+napi_value close(napi_env env, napi_callback_info info) {
 	size_t argc = 1;
 	napi_value args[1];
 	napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
@@ -946,7 +928,7 @@ static napi_value Close(napi_env env, napi_callback_info info) {
 	int32_t token = 0;
 	napi_get_value_int32(env, args[0], &token);
 
-	std::shared_ptr<BrowserState> state;
+	std::shared_ptr<Browser_State> state;
 	CefRefPtr<CefBrowser> browser;
 
 	{
@@ -970,30 +952,30 @@ static napi_value Close(napi_env env, napi_callback_info info) {
 		));
 	}
 
-	return NapiMakeUndefined(env);
+	return napi_make_undefined(env);
 }
 
-static napi_value Shutdown(napi_env env, napi_callback_info info) {
-	ShutdownCore();
-	return NapiMakeUndefined(env);
+napi_value shutdown(napi_env env, napi_callback_info info) {
+	shutdown_core();
+	return napi_make_undefined(env);
 }
 
-static napi_value InitExports(napi_env env, napi_value exports) {
+napi_value init_exports(napi_env env, napi_value exports) {
 	napi_value fn;
 
-	napi_create_function(env, "init", NAPI_AUTO_LENGTH, Init, nullptr, &fn);
+	napi_create_function(env, "init", NAPI_AUTO_LENGTH, init, nullptr, &fn);
 	napi_set_named_property(env, exports, "init", fn);
 
-	napi_create_function(env, "createWindow", NAPI_AUTO_LENGTH, CreateWindow, nullptr, &fn);
+	napi_create_function(env, "createWindow", NAPI_AUTO_LENGTH, create_window, nullptr, &fn);
 	napi_set_named_property(env, exports, "createWindow", fn);
 
-	napi_create_function(env, "send", NAPI_AUTO_LENGTH, Send, nullptr, &fn);
+	napi_create_function(env, "send", NAPI_AUTO_LENGTH, send, nullptr, &fn);
 	napi_set_named_property(env, exports, "send", fn);
 
-	napi_create_function(env, "close", NAPI_AUTO_LENGTH, Close, nullptr, &fn);
+	napi_create_function(env, "close", NAPI_AUTO_LENGTH, close, nullptr, &fn);
 	napi_set_named_property(env, exports, "close", fn);
 
-	napi_create_function(env, "shutdown", NAPI_AUTO_LENGTH, Shutdown, nullptr, &fn);
+	napi_create_function(env, "shutdown", NAPI_AUTO_LENGTH, shutdown, nullptr, &fn);
 	napi_set_named_property(env, exports, "shutdown", fn);
 
 	return exports;
@@ -1001,13 +983,13 @@ static napi_value InitExports(napi_env env, napi_value exports) {
 
 } // namespace
 
-NAPI_MODULE(NODE_GYP_MODULE_NAME, InitExports)
+NAPI_MODULE(NODE_GYP_MODULE_NAME, init_exports)
 
 #else
 
 int main(int argc, char* argv[]) {
 	CefMainArgs main_args(argc, argv);
-	CefRefPtr<CefApp> app = new BridgeApp();
+	CefRefPtr<CefApp> app = new Bridge_App();
 
 	const int exit_code = CefExecuteProcess(main_args, app, nullptr);
 	if (exit_code >= 0) {
