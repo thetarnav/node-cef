@@ -52,18 +52,20 @@
     <button onclick="sendInput()">Send input</button>
     
     <script>
+        console.log('Script running, cef =', window.cef);
+        
         let counter = 0;
         function sendMessage() {
-            sendToNative(JSON.stringify({ type: 'greeting', data: ++counter }));
+            window.cef.send(JSON.stringify({ type: 'greeting', data: ++counter }));
         }
         function sendCustom() {
-            sendToNative(JSON.stringify({ type: 'custom', payload: { timestamp: Date.now(), random: Math.random() } }));
+            window.cef.send(JSON.stringify({ type: 'custom', payload: { timestamp: Date.now(), random: Math.random() } }));
         }
         function sendInput() {
             const text = document.getElementById('input').value;
-            sendToNative(JSON.stringify({ type: 'user-input', text }));
+            window.cef.send(JSON.stringify({ type: 'user-input', text }));
         }
-        window.onMessage = function(msg) {
+        window.cef.onmessage = function(msg) {
             document.getElementById('Result').innerText = 'Result: ' + msg;
         };
     </script>

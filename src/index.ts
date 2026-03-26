@@ -1,262 +1,83 @@
-export type Message = {
-    id?: string;
-    type: string;
-    payload?: any;
-};
+import * as module from 'node:module'
+import * as url    from 'node:url'
+import * as path   from 'node:path'
+import * as fs     from 'node:fs'
 
-export type WindowOptions = {
-    html?: string;
-    url?: string;
-    width?: number;
-    height?: number;
-    devtools?: boolean;
-    hidden?: boolean;
-    frameless?: boolean;
-    icon?: string;
-    title?: string;
-};
+type Token = number & {__token: void}
 
-export type CreateWindowMessage = {
-    type: 'window:create';
-    payload: WindowOptions & { id: string };
-};
-
-export type WindowPostMessage = {
-    type: 'window:post';
-    payload: { id: string; msg: any };
-};
-
-export type WindowDevToolsMessage = {
-    type: 'window:devtools';
-    payload: { id: string; open: boolean };
-};
-
-export type WindowCloseMessage = {
-    type: 'window:close';
-    payload: { id: string };
-};
-
-export type AppQuitMessage = {
-    type: 'app:quit';
-};
-
-export type AnyMessage = CreateWindowMessage | WindowPostMessage | WindowDevToolsMessage | WindowCloseMessage | AppQuitMessage | Message;
-
-export class IPCServer {
-    private socketPath: string;
-    private server: any | null = null;
-    private clients = new Set<any>();
-    private messageHandlers: ((msg: string, socket: any) => void)[] = [];
-
-    constructor(socketPath: string = '/tmp/cef.sock') {
-        this.socketPath = socketPath;
-    }
-
-    getSocketPath(): string {
-        return this.socketPath;
-    }
-
-    async start(): Promise<void> {
-        this.server = Bun.listen({
-            unix: this.socketPath,
-            socket: {
-                open: (socket: any) => {
-                    this.clients.add(socket);
-                },
-                data: (socket: any, data: Buffer) => {
-                    const lines = data.toString().split('\n');
-                    for (const line of lines) {
-                        if (line.trim()) {
-                            for (const handler of this.messageHandlers) {
-                                handler(line, socket);
-                            }
-                        }
-                    }
-                },
-                close: (socket: any) => {
-                    this.clients.delete(socket);
-                },
-                error: () => {},
-            },
-        });
-    }
-
-    onMessage(handler: (msg: string, socket: any) => void) {
-        this.messageHandlers.push(handler);
-    }
-
-    sendToAll(msg: string) {
-        const line = msg + '\n';
-        for (const client of this.clients) {
-            client.write(line);
-        }
-    }
-
-    sendToSocket(socket: any, msg: string) {
-        socket.write(msg + '\n');
-    }
-
-    close() {
-        this.server?.stop();
-        this.clients.clear();
-    }
+type Init_Options = {
+    browserSubprocessPath?: string
 }
 
-export class Window {
-    id: string;
-    ipc: IPCServer;
-    onMessage: ((msg: string) => void) | undefined;
-    onClose: (() => void) | undefined;
-
-    constructor(id: string, ipc: IPCServer) {
-        this.id = id;
-        this.ipc = ipc;
-    }
-
-    postMessage(msg: string) {
-        this.ipc.sendToAll(`window:post:${this.id}:${msg}`);
-    }
-
-    close() {
-        this.ipc.sendToAll(`window:close:${this.id}`);
-    }
+type Native_API = {
+    init:         (opts: Init_Options) => void
+    createWindow: (url: string, onMessage: (msg: string) => void) => Token
+    send:         (token: Token, message: string) => void
+    close:        (token: Token) => void
+    shutdown:     () => void
 }
 
-export class App {
-    ipc: IPCServer;
-    windows = new Map<string, Window>();
-    cefProcess: any = null;
-    ready = false;
-    pendingWindows: { opts: WindowOptions; resolve: (w: Window) => void }[] = [];
-    onReady: (() => void) | undefined;
+let native: Native_API | null = null
 
-    constructor() {
-        this.ipc = new IPCServer();
+export function init(options?: Init_Options): void {
+    if (native !== null) {
+        return
     }
 
-    async start() {
-        await this.ipc.start();
-        this.spawnCEF();
-        this.setupMessageHandlers();
-    }
+    let require = module.createRequire(import.meta.url)
+    let dirname = path.dirname(url.fileURLToPath(import.meta.url))
 
-    spawnCEF() {
-        const binaryPath = process.cwd() + '/build/cef_host';
-        const binaryDir = process.cwd() + '/build';
+    let possible_paths = [
+        path.join(dirname, '..', 'build', 'cef_bridge.node'),
+        path.join(process.cwd(), 'build', 'cef_bridge.node'),
+    ]
 
-        const socketPath = this.ipc.getSocketPath();
-        this.cefProcess = Bun.spawn([binaryPath, '--socket-path=' + socketPath, '--no-auto-browser'], {
-            stdio: ['ignore', 'inherit', 'inherit'],
-            cwd: binaryDir,
-        });
-    }
-
-    setupMessageHandlers() {
-        this.ipc.onMessage((msg: string) => {
-            if (msg === 'hello') {
-                this.ready = true;
-                this.onReady?.();
-                this.processPendingWindows();
-                return;
-            }
-
-            if (msg.startsWith('window:created:')) {
-                const id = msg.substring(15);
-                console.log('Window created:', id);
-                return;
-            }
-
-            if (msg.startsWith('window:closed:')) {
-                const id = msg.substring(14);
-                console.log('Window closed:', id);
-                let window = this.windows.get(id);
-                console.assert(window != null);
-                window?.onClose?.();
-                this.windows.delete(id);
-                return;
-            }
-
-            if (msg.startsWith('ui:event:')) {
-                const rest = msg.substring(9);
-                const colonIdx = rest.indexOf(':');
-                if (colonIdx > 0) {
-                    const windowId = rest.substring(0, colonIdx);
-                    const message = rest.substring(colonIdx + 1);
-                    const win = this.windows.get(windowId);
-                    if (win) win.onMessage?.(message);
-                }
-                return;
-            }
-        });
-    }
-
-    processPendingWindows() {
-        for (const { opts, resolve } of this.pendingWindows) {
-            const win = this.doCreateWindow(opts);
-            resolve(win);
+    for (let addon_path of possible_paths) {
+        if (fs.existsSync(addon_path)) {
+            native = require(addon_path)
+            native!.init({
+                browserSubprocessPath: options?.browserSubprocessPath,
+            })
+            return
         }
-        this.pendingWindows = [];
     }
 
-    async createWindow(options: WindowOptions): Promise<Window> {
-        if (this.ready) {
-            return this.doCreateWindow(options);
-        }
-        return new Promise(resolve => {
-            this.pendingWindows.push({ opts: options, resolve });
-        });
-    }
-
-    doCreateWindow(options: WindowOptions): Window {
-        const id = `win_${Date.now()}`;
-        const win = new Window(id, this.ipc);
-        this.windows.set(id, win);
-
-        let url = options.url || 'about:blank';
-        if (options.html) {
-            url = 'data:text/html,' + encodeURIComponent(options.html);
-        }
-
-        this.ipc.sendToAll(`window:create:${id}:${url}`);
-        return win;
-    }
-
-    quit() {
-        this.ipc.sendToAll('app:quit');
-        setTimeout(() => {
-            this.cefProcess?.kill();
-            this.ipc.close();
-            process.exit(0);
-        }, 100);
-    }
+    throw new Error(
+        `Could not find cef_bridge.node addon.\n` +
+        `Searched paths:\n${possible_paths.map(p => `  - ${p}`).join('\n')}\n\n` +
+        `Make sure you have run 'bun run build:cef' and are using:\n` +
+        `  LD_LIBRARY_PATH=build bun run example`
+    )
 }
 
-export const clientBridgeJS = `
-(function() {
-    window.sendToNative = function(data) {
-        if (typeof data !== 'string') {
-            console.warn('sendToNative expects a string argument');
-            return;
-        }
-        if (window.sendToNative) {
-            try {
-                window.sendToNative(data);
-            } catch(e) {
-                console.warn('sendToNative failed:', e);
-            }
-        } else {
-            console.warn('sendToNative not available');
-        }
-    };
+export function createWindow(
+    url: string,
+    onMessage: (msg: string) => void
+): Token {
+    if (!native) {
+        throw new Error('Call init() before createWindow()')
+    }
+    return native.createWindow(url, onMessage)
+}
 
-    window.onMessage = null;
+export function send(token: Token, message: string): void {
+    if (!native) {
+        throw new Error('Call init() before send()')
+    }
+    native.send(token, message)
+}
 
-    window.addEventListener('cef-bridge-ready', function() {
-        console.log('CEF bridge ready');
-    });
-})();
-`;
+export function close(token: Token): void {
+    if (!native) {
+        throw new Error('Call init() before close()')
+    }
+    native.close(token)
+}
 
-export function createApp(): App {
-    return new App();
+export function shutdown(): void {
+    if (!native) {
+        return
+    }
+    native.shutdown()
+    native = null
 }

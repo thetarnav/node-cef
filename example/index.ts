@@ -1,45 +1,30 @@
-import * as cef from '../src/index.ts'
-import * as bun from 'bun'
-import * as path from 'node:path'
+import * as cef     from '../src/index.js'
+import * as process from 'node:process'
+import * as path    from 'node:path'
+
+console.log('Current directory:', process.cwd())
 
 async function main() {
-    const app = cef.createApp();
- 
-    app.onReady = () => {
-        console.log('App is ready');
-    }
+    cef.init()
 
-    await app.start();
+    const htmlPath = path.resolve(process.cwd(), 'example', 'index.html')
+    const url = 'file://' + htmlPath
+    console.log('Loading URL:', url)
 
-    const html = await bun.file(path.join(import.meta.dir, 'index.html')).text()
+    const token = cef.createWindow(url, msg => {
+        console.log('Message from browser:', msg)
+        cef.send(token, 'echo:' + msg)
+    })
 
-    const win = await app.createWindow({
-        html,
-        width: 800,
-        height: 600,
-        devtools: true,
-        title: 'Bun CEF Example',
-    });
-  
-    console.log('Window created. Press Ctrl+C to quit.');
+    console.log('Window created with token:', token)
+    console.log('Press Ctrl+C to quit')
 
-    win.onMessage = (msg) => {
-        console.log('Message from window:', msg);
-        win.postMessage('echo:' + msg);
-    }
-
-    win.onClose =  () => {
-        console.log('Window Closed! Bye bye..');
-        app.quit();
-        process.exit(0);
-    }
-
-    // Keep process alive
     process.on('sigint', () => {
-        console.log('quitting...');
-        app.quit();
-        process.exit(0);
+        console.log('Shutting down...')
+        cef.close(token)
+        cef.shutdown()
+        process.exit(0)
     })
 }
 
-main().catch(console.error);
+main().catch(console.error)
