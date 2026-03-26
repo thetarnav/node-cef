@@ -1,0 +1,62 @@
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache CEF
+        id: cache-cef
+        uses: actions/cache@v4
+        with:
+          path: cef/linux64
+          key: cef-${{ runner.os }}-v1
+
+      - name: Download CEF
+        if: steps.cache-cef.outputs.cache-hit != 'true'
+        run: bun run download:cef
+
+      - name: Build CEF
+        run: bun run build:cef
+
+      - name: TypeScript Check
+        run: bun run typecheck
+
+      - name: Run Tests (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgtk-3-0 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2
+          xvfb-run --auto-servernum bun run test
+        env:
+          LD_LIBRARY_PATH: build
+
+      - name: Run Tests (macOS)
+        if: matrix.os == 'macos-latest'
+        run: bun run test
+        env:
+          LD_LIBRARY_PATH: build
+
+      - name: Run Tests (Windows)
+        if: matrix.os == 'windows-latest'
+        run: bun run test
+        env:
+          LD_LIBRARY_PATH: build
+          Path: "build;${{ env.Path }}"

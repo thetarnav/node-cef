@@ -9,9 +9,15 @@ type Init_Options = {
     browserSubprocessPath?: string
 }
 
+type Create_Window_Options = {
+    width?: number
+    height?: number
+    windowless?: boolean
+}
+
 type Native_API = {
     init:         (opts: Init_Options) => void
-    createWindow: (url: string, onMessage: (msg: string) => void) => Token
+    createWindow: (url: string, onMessage: (msg: string) => void, options?: Create_Window_Options) => Token
     send:         (token: Token, message: string) => void
     close:        (token: Token) => void
     shutdown:     () => void
@@ -52,12 +58,13 @@ export function init(options?: Init_Options): void {
 
 export function createWindow(
     url: string,
-    onMessage: (msg: string) => void
+    onMessage: (msg: string) => void,
+    options?: Create_Window_Options
 ): Token {
     if (!native) {
         throw new Error('Call init() before createWindow()')
     }
-    return native.createWindow(url, onMessage)
+    return native.createWindow(url, onMessage, options)
 }
 
 export function send(token: Token, message: string): void {

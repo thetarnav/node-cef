@@ -11,7 +11,8 @@
     "build:cef": "mkdir -p build && cd build && cmake .. && make -j$(nproc)",
     "setup": "bun run download:cef && bun run build:cef",
     "postinstall": "bun run download:cef",
-    "example": "LD_LIBRARY_PATH=build bun run example/index.ts"
+    "example": "LD_LIBRARY_PATH=build bun run example/index.ts",
+    "test": "LD_LIBRARY_PATH=build bun run test/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

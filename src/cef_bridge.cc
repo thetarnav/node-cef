@@ -324,6 +324,9 @@ struct Browser_State {
 	napi_threadsafe_function tsfn = nullptr;
 	bool close_requested = false;
 	std::string url;
+	int width = 800;
+	int height = 600;
+	bool windowless = false;
 };
 
 std::unordered_map<int, std::vector<std::string>> g_pending_to_renderer;
@@ -569,7 +572,11 @@ void create_browser_on_ui(std::shared_ptr<Browser_State> state) {
 	}
 
 	CefWindowInfo window_info;
-	window_info.SetAsChild(0, CefRect(0, 0, 800, 600));
+	if (state->windowless) {
+		window_info.SetAsWindowless(0);
+	} else {
+		window_info.SetAsChild(0, CefRect(0, 0, state->width, state->height));
+	}
 
 	CefBrowserSettings browser_settings;
 
@@ -799,12 +806,12 @@ napi_value init(napi_env env, napi_callback_info info) {
 napi_value create_window(napi_env env, napi_callback_info info) {
 	ensure_cef_initialized();
 
-	size_t argc = 2;
-	napi_value args[2];
+	size_t argc = 3;
+	napi_value args[3];
 	napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
 	if (argc < 2) {
-		napi_throw_type_error(env, nullptr, "createWindow(url, onMessage) expects 2 arguments");
+		napi_throw_type_error(env, nullptr, "createWindow(url, onMessage[, options]) expects at least 2 arguments");
 		return nullptr;
 	}
 
@@ -822,9 +829,43 @@ napi_value create_window(napi_env env, napi_callback_info info) {
 		return nullptr;
 	}
 
+	int width = 800;
+	int height = 600;
+	bool windowless = false;
+
+		if (argc >= 3) {
+			napi_valuetype opt_type;
+			napi_typeof(env, args[2], &opt_type);
+			if (opt_type == napi_object) {
+				napi_value width_val, height_val, windowless_val;
+
+				if (napi_get_named_property(env, args[2], "width", &width_val) == napi_ok) {
+					napi_typeof(env, width_val, &opt_type);
+					if (opt_type == napi_number) {
+						napi_get_value_int32(env, width_val, &width);
+					}
+				}
+				if (napi_get_named_property(env, args[2], "height", &height_val) == napi_ok) {
+					napi_typeof(env, height_val, &opt_type);
+					if (opt_type == napi_number) {
+						napi_get_value_int32(env, height_val, &height);
+					}
+				}
+				if (napi_get_named_property(env, args[2], "windowless", &windowless_val) == napi_ok) {
+					napi_typeof(env, windowless_val, &opt_type);
+					if (opt_type == napi_boolean) {
+						napi_get_value_bool(env, windowless_val, &windowless);
+					}
+				}
+			}
+		}
+
 	auto state = std::make_shared<Browser_State>();
 	state->token = g_next_token.fetch_add(1);
 	state->url = url;
+	state->width = width;
+	state->height = height;
+	state->windowless = windowless;
 
 	napi_value resource_name;
 	napi_create_string_utf8(env, "cef-bridge", NAPI_AUTO_LENGTH, &resource_name);

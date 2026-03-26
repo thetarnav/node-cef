@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Suite</title>
+</head>
+<body>
+    <div id="test-results"></div>
+    <script>
+        let results = {
+            passed: 0,
+            failed: 0,
+            tests: [],
+        }
+
+        function assert(condition, message) {
+            if (condition) {
+                results.passed++
+                results.tests.push({ name: message, status: 'passed' })
+            } else {
+                results.failed++
+                results.tests.push({ name: message, status: 'failed' })
+            }
+        }
+
+        function report() {
+            let result = JSON.stringify({
+                type:   'test-complete',
+                passed: results.passed,
+                failed: results.failed,
+                tests:  results.tests,
+            })
+            window.cef.send(result)
+        }
+
+        window.cef.onmessage = function(msg) {
+            try {
+                let cmd = JSON.parse(msg)
+                if (cmd.type === 'run-tests') {
+                    runTests(cmd.tests)
+                }
+            } catch (e) {
+                window.cef.send(JSON.stringify({
+                    type: 'error',
+                    message: e.message,
+                }))
+            }
+        };
+
+        function runTests(tests) {
+            for (let test of tests) {
+                try {
+                    let result;
+                    if (test.fn) {
+                        result = eval(test.fn);
+                    } else if (test.code) {
+                        result = eval(test.code);
+                    } else {
+                        result = false;
+                    }
+                    assert(result === true, test.name || 'unnamed test');
+                } catch (e) {
+                    assert(false, (test.name || 'unnamed test') + ': ' + e.message);
+                }
+            }
+            report();
+        }
+    </script>
+</body>
+</html>
