@@ -59,7 +59,7 @@ if(WIN32)
     set(SYSTEM_LIBS ws2_32 winmm gdi32 user32 comdlg32 uuid)
     set(ADDON_LIBS ${SYSTEM_LIBS})
 elseif(APPLE)
-    set(SYSTEM_LIBS Cocoa AppKit)
+    set(SYSTEM_LIBS -framework Cocoa -framework AppKit)
     set(ADDON_LIBS -framework Cocoa -framework AppKit -framework "Chromium Embedded Framework")
 else()
     set(SYSTEM_LIBS X11)
@@ -123,15 +123,15 @@ set(COMPILE_DEFS
 # Platform-specific compile flags
 if(WIN32)
     set(COMPILE_FLAGS_HELPER
-        /O2 /Ob2 /Oi /Ot /GL /MD /EHsc /W3 /WX-
+        /O2 /Ob2 /Oi /Ot /GL /MT /EHsc /W3 /WX-
         /wd4100 /wd4127 /wd4244 /wd4267 /wd4996 /utf-8
         /DNDEBUG /D_CRT_SECURE_NO_WARNINGS /D_UNICODE /DUNICODE /DNOMINMAX
-        /D_WIN32_WINNT=0x0601 /DWIN32 /D_DEBUG /D_USRDLL
+        /D_WIN32_WINNT=0x0601 /DWIN32 /D_USRDLL
         /D__STDC_CONSTANT_MACROS /D__STDC_FORMAT_MACROS
         /std:c++20 /MP /Gy /Gm-
     )
     set(COMPILE_FLAGS_ADDON
-        /O2 /Ob2 /Oi /Ot /GL /MD /EHsc /W3 /WX-
+        /O2 /Ob2 /Oi /Ot /GL /MT /EHsc /W3 /WX-
         /wd4100 /wd4127 /wd4244 /wd4267 /wd4996 /utf-8
         /DNDEBUG /D_CRT_SECURE_NO_WARNINGS /D_UNICODE /DUNICODE /DNOMINMAX
         /D_WIN32_WINNT=0x0601 /DWIN32 /D_USRDLL
