@@ -119,11 +119,68 @@ set(COMPILE_DEFS
 
 # Platform-specific compile flags
 if(WIN32)
-    list(APPEND COMPILE_FLAGS_HELPER /EHsc /MD)
-    list(APPEND COMPILE_FLAGS_ADDON /EHsc /MD)
+    set(COMPILE_FLAGS_HELPER
+        /O2 /Ob2 /Oi /Ot /GL /MD /EHsc /W3 /WX-
+        /wd4100 /wd4127 /wd4244 /wd4267 /wd4996 /utf-8
+        /D "NDEBUG" /D "_CRT_SECURE_NO_WARNINGS" /D "_UNICODE" /D "UNICODE"
+        /D "_WIN32_WINNT=0x0601" /D "WIN32" /D "_DEBUG" /D "_USRDLL"
+        /D "__STDC_CONSTANT_MACROS" /D "__STDC_FORMAT_MACROS"
+        /std:c++20 /MP /Gy /Gm-
+    )
+    set(COMPILE_FLAGS_ADDON
+        /O2 /Ob2 /Oi /Ot /GL /MD /EHsc /W3 /WX-
+        /wd4100 /wd4127 /wd4244 /wd4267 /wd4996 /utf-8
+        /D "NDEBUG" /D "_CRT_SECURE_NO_WARNINGS" /D "_UNICODE" /D "UNICODE"
+        /D "_WIN32_WINNT=0x0601" /D "WIN32" /D "_USRDLL"
+        /D "__STDC_CONSTANT_MACROS" /D "__STDC_FORMAT_MACROS"
+        /std:c++20 /MP /Gy /Gm-
+    )
 elseif(APPLE)
-    list(APPEND COMPILE_FLAGS_HELPER -mmacosx-version-min=10.15)
-    list(APPEND COMPILE_FLAGS_ADDON -mmacosx-version-min=10.15)
+    set(COMPILE_FLAGS_HELPER
+        -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
+        -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
+        -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
+        -Wno-comment -Wno-deprecated-declarations -fno-exceptions
+        -fno-rtti -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
+        -Wsign-compare -Wno-literal-suffix -Wno-narrowing
+        -Wno-attributes -Wno-array-bounds -Wno-stringop-overflow
+        -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
+        -D_FORTIFY_SOURCE=2 -mmacosx-version-min=10.15
+    )
+    set(COMPILE_FLAGS_ADDON
+        -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
+        -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
+        -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
+        -Wno-comment -Wno-deprecated-declarations -fexceptions -frtti
+        -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
+        -Wsign-compare -Wno-literal-suffix -Wno-narrowing
+        -Wno-attributes -Wno-array-bounds -Wno-stringop-overflow
+        -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
+        -D_FORTIFY_SOURCE=2 -mmacosx-version-min=10.15
+    )
+else()
+    set(COMPILE_FLAGS_HELPER
+        -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
+        -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
+        -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
+        -Wno-comment -Wno-deprecated-declarations -m64 -march=x86-64 -fno-exceptions
+        -fno-rtti -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
+        -Wsign-compare -Wno-literal-suffix -Wno-narrowing
+        -Wno-attributes -Wno-array-bounds -Wno-stringop-overflow
+        -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
+        -D_FORTIFY_SOURCE=2
+    )
+    set(COMPILE_FLAGS_ADDON
+        -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
+        -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
+        -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
+        -Wno-comment -Wno-deprecated-declarations -m64 -march=x86-64
+        -fexceptions -frtti -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
+        -Wsign-compare -Wno-literal-suffix -Wno-narrowing
+        -Wno-attributes -Wno-array-bounds -Wno-stringop-overflow
+        -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
+        -D_FORTIFY_SOURCE=2
+    )
 endif()
 
 # Find node - use pkg-config or manual path
