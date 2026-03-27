@@ -39,11 +39,11 @@ if(WIN32)
 elseif(APPLE)
     set(LIB_PREFIX "lib")
     set(LIB_SUFFIX ".dylib")
-    set(CEF_LIB "libcef.dylib")
+    set(CEF_LIB "Chromium Embedded Framework")
     set(CEF_DLL "libcef.dylib")
     set(WRAPPER_LIB "libcef_dll_wrapper.a")
     set(SHADOW_ENABLED FALSE)
-    set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release")
+    set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release/Chromium Embedded Framework.framework")
 else()
     set(LIB_PREFIX "lib")
     set(LIB_SUFFIX ".so")
@@ -59,8 +59,8 @@ if(WIN32)
     set(SYSTEM_LIBS "ws2_32 winmm gdi32 user32 comdlg32 uuid")
     set(ADDON_LIBS "${SYSTEM_LIBS}")
 elseif(APPLE)
-    set(SYSTEM_LIBS "Cocoa AppKit")
-    set(ADDON_LIBS "-framework Cocoa" "-framework AppKit")
+    set(SYSTEM_LIBS "-framework Cocoa -framework AppKit -framework Chromium Embedded Framework")
+    set(ADDON_LIBS "-framework Cocoa -framework AppKit -framework Chromium Embedded Framework")
 else()
     set(SYSTEM_LIBS "X11")
     set(ADDON_LIBS "X11" "dl")
@@ -276,12 +276,10 @@ elseif(APPLE)
     add_custom_command(TARGET cef_bridge POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Resources ${CMAKE_BINARY_DIR}/Resources
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CEF_ROOT_ABS}/Release/${CEF_DLL} ${CMAKE_BINARY_DIR}/cef_bridge_helper.framework/cef_bridge_helper
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CEF_ROOT_ABS}/Release/Chromium\ Framework.framework/Chromium\ Framework ${CMAKE_BINARY_DIR}/cef_bridge_helper.framework/Frameworks/Chromium\ Framework
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CEF_ROOT_ABS}/Release/${CEF_DLL} ${CMAKE_BINARY_DIR}/cef_bridge_helper.framework/Libraries/${CEF_DLL}
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework ${CMAKE_BINARY_DIR}/cef_bridge_helper.framework/Frameworks/Chromium\ Embedded\ Framework
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework/Libraries ${CMAKE_BINARY_DIR}/cef_bridge_helper.framework/Libraries
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Release/icudtl.dat ${CMAKE_BINARY_DIR}/icudtl.dat
         COMMAND ${CMAKE_COMMAND} -E copy
