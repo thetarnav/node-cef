@@ -56,14 +56,14 @@ endif()
 
 # Platform-specific system libraries
 if(WIN32)
-    set(SYSTEM_LIBS "ws2_32 winmm gdi32 user32 comdlg32 uuid")
-    set(ADDON_LIBS "${SYSTEM_LIBS}")
+    set(SYSTEM_LIBS ws2_32 winmm gdi32 user32 comdlg32 uuid)
+    set(ADDON_LIBS ${SYSTEM_LIBS})
 elseif(APPLE)
-    set(SYSTEM_LIBS "-framework Cocoa -framework AppKit -framework Chromium Embedded Framework")
-    set(ADDON_LIBS "-framework Cocoa -framework AppKit -framework Chromium Embedded Framework")
+    set(SYSTEM_LIBS Cocoa AppKit)
+    set(ADDON_LIBS -framework Cocoa -framework AppKit -framework "Chromium Embedded Framework")
 else()
-    set(SYSTEM_LIBS "X11")
-    set(ADDON_LIBS "X11" "dl")
+    set(SYSTEM_LIBS X11)
+    set(ADDON_LIBS X11 dl)
 endif()
 
 # Wrapper library
