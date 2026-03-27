@@ -1,5 +1,6 @@
 import * as fs   from "node:fs"
 import * as path from "node:path"
+import * as os   from "node:os"
 import * as cp   from "node:child_process"
 import * as util from "node:util"
 
@@ -48,14 +49,15 @@ fs.mkdirSync(output_dir, {recursive: true})
 console.log(`Downloading CEF ${CEF_VERSION}+chromium-${CHROMIUM_VERSION} for ${cef_platform}...`)
 console.log(`From: ${url}`)
 
-let temp_file = path.join(import.meta.dir, `cef-${cef_platform}.tar.bz2`)
+let tmp_dir = fs.mkdtempSync(path.join(os.tmpdir(), "node-cef-"))
+let archive = path.join(tmp_dir, `cef-${cef_platform}.tar.bz2`)
 
 try {
-	cp.execSync(`curl -L -o "${temp_file}" "${url}"`, {stdio: "inherit"})
+	cp.execSync(`curl -L -o "${archive}" "${url}"`, {stdio: "inherit"})
 
 	console.log(`Download completed, extracting...`)
 
-	cp.execSync(`tar -xjf "${temp_file}" --strip-components=1 -C "${output_dir}"`, {
+	cp.execSync(`tar -xjf "${archive}" --strip-components=1 -C "${output_dir}"`, {
 		stdio: "inherit",
 	})
 
@@ -76,7 +78,5 @@ try {
 
 	console.log(`CEF wrapper built successfully`)
 } finally {
-	if (fs.existsSync(temp_file)) {
-		fs.unlinkSync(temp_file)
-	}
+    fs.rmSync(tmp_dir, {force: true, recursive: true})
 }
