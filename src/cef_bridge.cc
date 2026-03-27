@@ -307,6 +307,7 @@ private:
 #include <node_api.h>
 
 #if defined(_WIN32)
+	#define NOMINMAX
 	#include <windows.h>
 #else
 	#include <dlfcn.h>
@@ -1029,7 +1030,11 @@ NAPI_MODULE(NODE_GYP_MODULE_NAME, init_exports)
 #else
 
 int main(int argc, char* argv[]) {
+#if defined(_WIN32)
+	CefMainArgs main_args(GetModuleHandle(nullptr));
+#else
 	CefMainArgs main_args(argc, argv);
+#endif
 	CefRefPtr<CefApp> app = new Bridge_App();
 
 	const int exit_code = CefExecuteProcess(main_args, app, nullptr);
