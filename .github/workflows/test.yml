@@ -38,6 +38,12 @@ jobs:
       - name: Install dependencies
         run: bun ci # Will download cef as well
 
+      - name: Get Node.js include path
+        id: node-include
+        run: |
+          INCLUDE_PATH=$(bun -e "console.log(require('path').join(require('path').dirname(require('path').dirname(process.execPath)), 'include', 'node'))")
+          echo "include_path=$INCLUDE_PATH" >> $GITHUB_OUTPUT
+
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -46,6 +52,8 @@ jobs:
 
       - name: Build CEF
         run: bun run build:cef
+        env:
+          NODE_INCLUDE_DIRS: ${{ steps.node-include.outputs.include_path }}
 
       - name: TypeScript Check
         run: bun run typecheck

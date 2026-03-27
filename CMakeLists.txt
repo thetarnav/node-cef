@@ -61,8 +61,9 @@ if(WIN32)
 elseif(APPLE)
     find_library(COCOA_LIBRARY Cocoa)
     find_library(APPKIT_LIBRARY AppKit)
+    find_library(CEF_LIBRARY "Chromium Embedded Framework" PATHS "${CEF_ROOT_ABS}/Release")
     set(SYSTEM_LIBS ${COCOA_LIBRARY} ${APPKIT_LIBRARY})
-    set(ADDON_LIBS ${COCOA_LIBRARY} ${APPKIT_LIBRARY} "-framework Chromium Embedded Framework")
+    set(ADDON_LIBS ${COCOA_LIBRARY} ${APPKIT_LIBRARY} ${CEF_LIBRARY})
 else()
     set(SYSTEM_LIBS X11)
     set(ADDON_LIBS X11 dl)
@@ -189,9 +190,15 @@ else()
 endif()
 
 # Find node - use pkg-config or manual path
-find_package(PkgConfig)
-if(PkgConfig_FOUND)
-    pkg_check_modules(NODE nodejs)
+# First check environment variable (can be set by CI)
+if(DEFINED ENV{NODE_INCLUDE_DIRS})
+    set(NODE_INCLUDE_DIRS $ENV{NODE_INCLUDE_DIRS})
+    message(STATUS "Using NODE_INCLUDE_DIRS from environment: ${NODE_INCLUDE_DIRS}")
+else()
+    find_package(PkgConfig)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(NODE nodejs)
+    endif()
 endif()
 
 # Fallback: find node headers manually
@@ -210,11 +217,31 @@ if(NOT NODE_FOUND)
 endif()
 
 if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
-    # Try common Windows locations
+    # Try common Windows locations (with different possible paths)
     if(WIN32)
-        set(NODE_INCLUDE_DIRS "C:/Program Files/nodejs/include/node")
+        set(POSSIBLE_NODE_PATHS
+            "C:/Program Files/nodejs/include/node"
+            "C:/Program Files (x86)/nodejs/include/node"
+            "$ENV{PROGRAMFILES}/nodejs/include/node"
+            "$ENV{LOCALAPPDATA}/Programs/node/include/node"
+        )
+        foreach(PATH ${POSSIBLE_NODE_PATHS})
+            if(EXISTS "${PATH}")
+                set(NODE_INCLUDE_DIRS "${PATH}")
+                break()
+            endif()
+        endforeach()
     elseif(APPLE)
-        set(NODE_INCLUDE_DIRS "/usr/local/include/node")
+        set(POSSIBLE_NODE_PATHS
+            "/usr/local/include/node"
+            "/opt/homebrew/include/node"
+        )
+        foreach(PATH ${POSSIBLE_NODE_PATHS})
+            if(EXISTS "${PATH}")
+                set(NODE_INCLUDE_DIRS "${PATH}")
+                break()
+            endif()
+        endforeach()
     endif()
 endif()
 
