@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -b src",
     "download:cef": "bun run download-cef.ts",
-    "build:cef": "mkdir -p build && cd build && cmake .. && make -j$(nproc)",
+    "build:cef": "mkdir -p build && cd build && cmake .. && cmake --build . --config Release",
     "setup": "bun run download:cef && bun run build:cef",
     "postinstall": "bun run download:cef",
     "example": "LD_LIBRARY_PATH=build bun run example/index.ts",
