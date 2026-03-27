@@ -1,7 +1,6 @@
 import * as fs   from "node:fs"
 import * as path from "node:path"
 import * as os   from "node:os"
-import * as cp   from "node:child_process"
 import * as util from "node:util"
 
 const CEF_VERSION      = "146.0.6+g68649e2"
@@ -34,7 +33,7 @@ switch (platform) {
 	}
 
 if (args.platform) {
-	cef_platform = args.platform as string
+	cef_platform = String(args.platform)
 	console.log(`[download-cef] Overriding platform to: ${cef_platform}`)
 }
 
@@ -45,7 +44,7 @@ let output_dir = path.join(import.meta.dir, "cef", cef_platform)
 let wrapper_lib_path: string
 
 if (cef_platform.startsWith("windows")) {
-	wrapper_lib_path = path.join(output_dir, "build", "libcef_dll_wrapper", "libcef_dll_wrapper.lib")
+	wrapper_lib_path = path.join(output_dir, "build", "libcef_dll_wrapper", "Release", "libcef_dll_wrapper.lib")
 } else if (cef_platform.startsWith("macos")) {
 	wrapper_lib_path = path.join(output_dir, "build", "libcef_dll_wrapper", "libcef_dll_wrapper.a")
 } else {
@@ -87,20 +86,18 @@ console.log(`[download-cef] Temp directory: ${tmp_dir}`)
 let archive = path.join(tmp_dir, `cef-${cef_platform}.tar.bz2`)
 
 try {
-	console.log(`[download-cef] Running curl to download...`)
-	let curl_result = cp.spawnSync("curl", ["-L", "-o", archive, "--retry", "3", "--retry-delay", "1", url], {stdio: "inherit"})
-	if (curl_result.status !== 0) {
-		console.error(`[download-cef] curl failed with code ${curl_result.status}, trying without HTTP/2...`)
-		cp.execSync(`curl -L -o "${archive}" --http1.1 "${url}"`, {stdio: "inherit"})
+	console.log(`[download-cef] Downloading with bun...`)
+	Bun.$`bun x bun:bun download ${url} -o ${archive}`.cwd(tmp_dir)
+
+	if (!fs.existsSync(archive)) {
+		throw new Error(`Download failed, archive not found at ${archive}`)
 	}
 
 	let archive_size = fs.statSync(archive).size
 	console.log(`[download-cef] Downloaded ${archive_size} bytes`)
 
 	console.log(`[download-cef] Extracting archive...`)
-	cp.execSync(`tar -xjf "${archive}" --strip-components=1 -C "${output_dir}"`, {
-		stdio: "inherit",
-	})
+	Bun.$`tar -xjf ${archive} --strip-components=1 -C ${output_dir}`
 
 	console.log(`[download-cef] Writing version file`)
 	fs.writeFileSync(path.join(output_dir, ".version"), `${CEF_VERSION}+chromium-${CHROMIUM_VERSION}`)
@@ -120,20 +117,14 @@ try {
 	console.log(`[download-cef] Using CMake generator: ${cmake_gen}`)
 
 	console.log(`[download-cef] Running CMake configure...`)
-	cp.execSync(`cmake -G "${cmake_gen}" -DCMAKE_BUILD_TYPE=Release -B build -S .`, {
-		cwd: output_dir,
-		stdio: "inherit",
-	})
+	Bun.$`cmake -G ${cmake_gen} -DCMAKE_BUILD_TYPE=Release -B build -S .`.cwd(output_dir)
 
-	let build_parallel = ""
+	let build_parallel: string[] = []
 	if (platform !== "win32") {
-		build_parallel = `-j${os.cpus().length}`
+		build_parallel = ["-j", String(os.cpus().length)]
 	}
-	console.log(`[download-cef] Running CMake build for libcef_dll_wrapper ${build_parallel}...`)
-	cp.execSync(`cmake --build build --target libcef_dll_wrapper ${build_parallel} --config Release`, {
-		cwd: output_dir,
-		stdio: "inherit",
-	})
+	console.log(`[download-cef] Running CMake build for libcef_dll_wrapper...`)
+	Bun.$`cmake --build build --target libcef_dll_wrapper ${build_parallel.join(" ")} --config Release`.cwd(output_dir)
 
 	console.log(`[download-cef] Wrapper library built successfully`)
 	console.log(`[download-cef] DONE`)
