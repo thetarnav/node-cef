@@ -38,9 +38,11 @@ jobs:
       - name: Install dependencies
         run: bun ci # Will download cef as well
 
-      - name: Install Linux build dependencies
+      - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get install -y libx11-dev libxext-dev libxrandr-dev libxss-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev libxrandr-dev libxss-dev xvfb libgtk-3-0 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2t64
 
       - name: Build CEF
         run: bun run build:cef
@@ -50,10 +52,7 @@ jobs:
 
       - name: Run Tests (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb libgtk-3-0 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2t64
-          xvfb-run --auto-servernum bun run test
+        run: xvfb-run --auto-servernum bun run test
         env:
           LD_LIBRARY_PATH: build
 
