@@ -19,6 +19,7 @@ if(NOT DEFINED CEF_ROOT)
     endif()
     set(CEF_ROOT "cef/${DEFAULT_PLATFORM}")
 endif()
+
 if(IS_ABSOLUTE "${CEF_ROOT}")
     set(CEF_ROOT_ABS "${CEF_ROOT}")
 else()
@@ -30,12 +31,14 @@ if(WIN32)
     set(CEF_LIB "libcef.lib")
     set(CEF_DLL "libcef.dll")
     set(WRAPPER_LIB "libcef_dll_wrapper.lib")
+    set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/Release/${WRAPPER_LIB}")
     set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release")
     set(SYSTEM_LIBS ws2_32 winmm gdi32 user32 comdlg32 uuid)
 elseif(APPLE)
     set(CEF_LIB "Chromium Embedded Framework")
     set(CEF_DLL "libcef.dylib")
     set(WRAPPER_LIB "libcef_dll_wrapper.a")
+    set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/Release/${WRAPPER_LIB}")
     set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release/Chromium Embedded Framework.framework")
     find_library(COCOA_LIBRARY Cocoa)
     find_library(APPKIT_LIBRARY AppKit)
@@ -45,17 +48,9 @@ else()
     set(CEF_LIB "libcef.so")
     set(CEF_DLL "libcef.so")
     set(WRAPPER_LIB "libcef_dll_wrapper.a")
+    set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/${WRAPPER_LIB}")
     set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release")
     set(SYSTEM_LIBS X11)
-endif()
-
-# Wrapper library
-if(WIN32)
-    set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/Release/${WRAPPER_LIB}")
-elseif(APPLE)
-    set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/Release/${WRAPPER_LIB}")
-else()
-    set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/${WRAPPER_LIB}")
 endif()
 
 if(NOT EXISTS "${WRAPPER_LIBRARY}")
@@ -137,8 +132,8 @@ add_custom_command(TARGET cef_bridge_helper POST_BUILD
 # Node addon (using cmake-js)
 # -----------------------------------------------------------------------------
 add_library(${PROJECT_NAME} SHARED src/cef_bridge.cc ${CMAKE_JS_SRC})
-set_target_properties(${PROJECT_NAME} PROPERTIES 
-    PREFIX "" 
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    PREFIX ""
     SUFFIX ".node"
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}

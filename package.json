@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -b src",
     "download:cef": "bun run download-cef.ts",
-    "build:cef": "cmake-js build --CDCEF_ROOT=cef/linux64",
+    "build:cef": "cmake-js build",
     "setup": "bun run download:cef && bun run build:cef",
     "postinstall": "bun run download:cef",
     "example": "LD_LIBRARY_PATH=build bun run example/index.ts",
