@@ -2,6 +2,7 @@ import * as fs   from "node:fs"
 import * as path from "node:path"
 import * as os   from "node:os"
 import * as util from "node:util"
+import * as bun  from "bun"
 
 const CEF_VERSION      = "146.0.6+g68649e2"
 const CHROMIUM_VERSION = "146.0.7680.154"
@@ -86,18 +87,19 @@ console.log(`[download-cef] Temp directory: ${tmp_dir}`)
 let archive = path.join(tmp_dir, `cef-${cef_platform}.tar.bz2`)
 
 try {
-	console.log(`[download-cef] Downloading with bun...`)
-	Bun.$`bun x bun:bun download ${url} -o ${archive}`.cwd(tmp_dir)
-
-	if (!fs.existsSync(archive)) {
-		throw new Error(`Download failed, archive not found at ${archive}`)
+	console.log(`[download-cef] Downloading with bun (fetch)...`)
+	let response = await fetch(url)
+	if (!response.ok) {
+		throw new Error(`HTTP error! status: ${response.status}`)
 	}
+	let data = await response.arrayBuffer()
+	fs.writeFileSync(archive, Buffer.from(data))
 
 	let archive_size = fs.statSync(archive).size
 	console.log(`[download-cef] Downloaded ${archive_size} bytes`)
 
 	console.log(`[download-cef] Extracting archive...`)
-	Bun.$`tar -xjf ${archive} --strip-components=1 -C ${output_dir}`
+	await bun.$`tar -xjf ${archive} --strip-components=1 -C ${output_dir}`
 
 	console.log(`[download-cef] Writing version file`)
 	fs.writeFileSync(path.join(output_dir, ".version"), `${CEF_VERSION}+chromium-${CHROMIUM_VERSION}`)
@@ -117,14 +119,14 @@ try {
 	console.log(`[download-cef] Using CMake generator: ${cmake_gen}`)
 
 	console.log(`[download-cef] Running CMake configure...`)
-	Bun.$`cmake -G ${cmake_gen} -DCMAKE_BUILD_TYPE=Release -B build -S .`.cwd(output_dir)
+	await bun.$`cmake -G ${cmake_gen} -DCMAKE_BUILD_TYPE=Release -B build -S .`.cwd(output_dir)
 
 	let build_parallel: string[] = []
 	if (platform !== "win32") {
 		build_parallel = ["-j", String(os.cpus().length)]
 	}
 	console.log(`[download-cef] Running CMake build for libcef_dll_wrapper...`)
-	Bun.$`cmake --build build --target libcef_dll_wrapper ${build_parallel.join(" ")} --config Release`.cwd(output_dir)
+	await bun.$`cmake --build build --target libcef_dll_wrapper ${build_parallel.join(" ")} --config Release`.cwd(output_dir)
 
 	console.log(`[download-cef] Wrapper library built successfully`)
 	console.log(`[download-cef] DONE`)
