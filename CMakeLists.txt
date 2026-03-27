@@ -189,60 +189,57 @@ else()
     )
 endif()
 
-# Find node - use pkg-config or manual path
-# First check environment variable (can be set by CI)
-if(DEFINED ENV{NODE_INCLUDE_DIRS})
-    set(NODE_INCLUDE_DIRS $ENV{NODE_INCLUDE_DIRS})
-    message(STATUS "Using NODE_INCLUDE_DIRS from environment: ${NODE_INCLUDE_DIRS}")
-else()
-    find_package(PkgConfig)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(NODE nodejs)
+# Find node - use pkg-config first (works on some systems), then fallback to bun
+find_package(PkgConfig)
+if(PkgConfig_FOUND)
+    pkg_check_modules(NODE nodejs)
+    if(NODE_FOUND)
+        set(NODE_INCLUDE_DIRS "${NODE_INCLUDE_DIRS}")
     endif()
 endif()
 
-# Fallback: find node headers manually
-if(NOT NODE_FOUND)
-    find_program(NODE_EXECUTABLE node)
-    if(NOT NODE_EXECUTABLE)
-        find_program(NODE_EXECUTABLE bun)
-    endif()
-    if(NODE_EXECUTABLE)
-        execute_process(
-            COMMAND ${NODE_EXECUTABLE} -p "require('path').join(require('path').dirname(require('path').dirname(process.execPath)), 'include', 'node')"
-            OUTPUT_VARIABLE NODE_INCLUDE_DIRS
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-    endif()
-endif()
-
+# Fallback: find node headers via node or bun
 if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
-    # Try common Windows locations (with different possible paths)
-    if(WIN32)
-        set(POSSIBLE_NODE_PATHS
-            "C:/Program Files/nodejs/include/node"
-            "C:/Program Files (x86)/nodejs/include/node"
-            "$ENV{PROGRAMFILES}/nodejs/include/node"
-            "$ENV{LOCALAPPDATA}/Programs/node/include/node"
-        )
-        foreach(PATH ${POSSIBLE_NODE_PATHS})
-            if(EXISTS "${PATH}")
-                set(NODE_INCLUDE_DIRS "${PATH}")
+    # Try node first (more likely to have headers), then bun
+    foreach(PROG node bun)
+        find_program(NODE_EXECUTABLE ${PROG})
+        if(NODE_EXECUTABLE)
+            execute_process(
+                COMMAND ${NODE_EXECUTABLE} -p "require('path').join(require('path').dirname(require('path').dirname(process.execPath)), 'include', 'node')"
+                OUTPUT_VARIABLE NODE_INCLUDE_DIRS
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+            if(NODE_INCLUDE_DIRS AND EXISTS "${NODE_INCLUDE_DIRS}")
                 break()
             endif()
-        endforeach()
-    elseif(APPLE)
-        set(POSSIBLE_NODE_PATHS
-            "/usr/local/include/node"
+        endif()
+    endforeach()
+endif()
+
+# Try common installation paths as last resort
+if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
+    if(APPLE)
+        set(POSSIBLE_PATHS
             "/opt/homebrew/include/node"
+            "/usr/local/include/node"
         )
-        foreach(PATH ${POSSIBLE_NODE_PATHS})
-            if(EXISTS "${PATH}")
-                set(NODE_INCLUDE_DIRS "${PATH}")
-                break()
-            endif()
-        endforeach()
+    elseif(WIN32)
+        set(POSSIBLE_PATHS
+            "C:/Program Files/nodejs/include/node"
+            "$ENV{PROGRAMFILES}/nodejs/include/node"
+        )
+    else()
+        set(POSSIBLE_PATHS
+            "/usr/include/node"
+            "/usr/local/include/node"
+        )
     endif()
+    foreach(PATH ${POSSIBLE_PATHS})
+        if(EXISTS "${PATH}")
+            set(NODE_INCLUDE_DIRS "${PATH}")
+            break()
+        endif()
+    endforeach()
 endif()
 
 message(STATUS "NODE_INCLUDE_DIRS: ${NODE_INCLUDE_DIRS}")

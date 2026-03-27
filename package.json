@@ -15,7 +15,8 @@
     "test": "LD_LIBRARY_PATH=build bun run test/index.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "node-gyp": "^10"
   },
   "peerDependencies": {
     "typescript": "^5"
