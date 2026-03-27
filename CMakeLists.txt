@@ -35,6 +35,7 @@ if(WIN32)
     set(CEF_DLL "libcef.dll")
     set(WRAPPER_LIB "libcef_dll_wrapper.lib")
     set(SHADOW_ENABLED FALSE)
+    set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release")
 elseif(APPLE)
     set(LIB_PREFIX "lib")
     set(LIB_SUFFIX ".dylib")
@@ -42,6 +43,7 @@ elseif(APPLE)
     set(CEF_DLL "libcef.dylib")
     set(WRAPPER_LIB "libcef_dll_wrapper.a")
     set(SHADOW_ENABLED FALSE)
+    set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release")
 else()
     set(LIB_PREFIX "lib")
     set(LIB_SUFFIX ".so")
@@ -49,6 +51,7 @@ else()
     set(CEF_DLL "libcef.so")
     set(WRAPPER_LIB "libcef_dll_wrapper.a")
     set(SHADOW_ENABLED TRUE)
+    set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release")
 endif()
 
 # Platform-specific system libraries
@@ -65,8 +68,6 @@ endif()
 
 # Wrapper library
 if(WIN32)
-    set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/Release/${WRAPPER_LIB}")
-elseif(APPLE)
     set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/Release/${WRAPPER_LIB}")
 else()
     set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/${WRAPPER_LIB}")
@@ -214,7 +215,7 @@ target_compile_options(cef_bridge_helper PRIVATE ${COMPILE_FLAGS_HELPER})
 target_compile_definitions(cef_bridge_helper PRIVATE ${COMPILE_DEFS} -DCEF_HELPER_BINARY)
 
 target_link_libraries(cef_bridge_helper
-    ${CEF_ROOT_ABS}/Release/${CEF_LIB}
+    ${CEF_LIB_PATH}/${CEF_LIB}
     ${WRAPPER_LIBRARY}
     ${SYSTEM_LIBS}
 )
@@ -235,7 +236,7 @@ target_compile_definitions(cef_bridge PRIVATE ${COMPILE_DEFS})
 target_include_directories(cef_bridge PRIVATE ${NODE_INCLUDE_DIRS})
 
 target_link_libraries(cef_bridge
-    ${CEF_ROOT_ABS}/Release/${CEF_LIB}
+    ${CEF_LIB_PATH}/${CEF_LIB}
     ${WRAPPER_LIBRARY}
     ${ADDON_LIBS}
 )
