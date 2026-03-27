@@ -28,9 +28,6 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun ci
-
       - name: Cache CEF
         id: cache-cef
         uses: actions/cache@v4
@@ -38,9 +35,8 @@ jobs:
           path: cef/${{ matrix.platform }}
           key: cef-${{ matrix.platform }}-v1
 
-      - name: Download CEF
-        if: steps.cache-cef.outputs.cache-hit != 'true'
-        run: bun run download:cef -- --platform ${{ matrix.platform }}
+      - name: Install dependencies
+        run: bun ci # Will download cef as well
 
       - name: Install Linux build dependencies
         if: matrix.os == 'ubuntu-latest'
