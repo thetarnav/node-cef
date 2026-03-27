@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.15...3.31)
 project(cef_bridge)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -88,7 +88,6 @@ if(WIN32)
         /D__STDC_CONSTANT_MACROS /D__STDC_FORMAT_MACROS
         /std:c++20 /MP /Gy /Gm-
     )
-    set(ADDON_FLAGS ${HELPER_FLAGS})
 elseif(APPLE)
     set(HELPER_FLAGS
         -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
@@ -96,17 +95,6 @@ elseif(APPLE)
         -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
         -Wno-comment -Wno-deprecated-declarations -fno-exceptions
         -fno-rtti -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
-        -Wsign-compare -Wno-narrowing
-        -Wno-array-bounds
-        -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
-        -D_FORTIFY_SOURCE=2 -mmacosx-version-min=10.15
-    )
-    set(ADDON_FLAGS
-        -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
-        -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
-        -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
-        -Wno-comment -Wno-deprecated-declarations -fexceptions -frtti
-        -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
         -Wsign-compare -Wno-narrowing
         -Wno-array-bounds
         -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
@@ -124,86 +112,6 @@ else()
         -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
         -D_FORTIFY_SOURCE=2
     )
-    set(ADDON_FLAGS
-        -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
-        -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
-        -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
-        -Wno-comment -Wno-deprecated-declarations -m64 -march=x86-64 -fexceptions -frtti
-        -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
-        -Wsign-compare -Wno-narrowing
-        -Wno-array-bounds
-        -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
-        -D_FORTIFY_SOURCE=2
-    )
-endif()
-
-# -----------------------------------------------------------------------------
-# Find Node.js headers - try executable first, then download
-# -----------------------------------------------------------------------------
-# Try node/bun executables first
-foreach(PROG node bun)
-    find_program(NODE_EXE ${PROG})
-    if(NODE_EXE)
-        execute_process(
-            COMMAND ${NODE_EXE} -p "require('path').join(require('path').dirname(require('path').dirname(process.execPath)), 'include', 'node')"
-            OUTPUT_VARIABLE NODE_INCLUDE_DIRS
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        if(NODE_INCLUDE_DIRS AND EXISTS "${NODE_INCLUDE_DIRS}")
-            message(STATUS "Found Node.js headers via ${PROG}: ${NODE_INCLUDE_DIRS}")
-            break()
-        endif()
-    endif()
-endforeach()
-
-# If not found, download Node.js headers
-if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
-    message(STATUS "Downloading Node.js headers...")
-    
-    # Determine platform and arch
-    if(WIN32)
-        set(NAPI_PLATFORM "win32")
-    elseif(APPLE)
-        set(NAPI_PLATFORM "darwin")
-    else()
-        set(NAPI_PLATFORM "linux")
-    endif()
-    
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
-        set(NAPI_ARCH "arm64")
-    else()
-        set(NAPI_ARCH "x64")
-    endif()
-    
-    set(NAPI_VERSION "22.16.0")
-    set(NAPI_DEST "${CMAKE_BINARY_DIR}/node-${NAPI_VERSION}")
-    set(NAPI_HEADERS_URL "https://nodejs.org/download/release/v${NAPI_VERSION}/node-v${NAPI_VERSION}-headers.tar.gz")
-    
-    if(NOT EXISTS "${NAPI_DEST}/include/node")
-        message(STATUS "Downloading from ${NAPI_HEADERS_URL}")
-        file(DOWNLOAD "${NAPI_HEADERS_URL}" "${CMAKE_BINARY_DIR}/node.tar.gz" SHOW_PROGRESS)
-        file(ARCHIVE_EXTRACT INPUT "${CMAKE_BINARY_DIR}/node.tar.gz" DESTINATION "${CMAKE_BINARY_DIR}")
-        file(REMOVE "${CMAKE_BINARY_DIR}/node.tar.gz")
-    endif()
-    
-    set(NODE_INCLUDE_DIRS "${NAPI_DEST}/include/node")
-    
-    # For Windows, also download node.lib
-    if(WIN32)
-        set(NODE_LIB_URL "https://nodejs.org/download/release/v${NAPI_VERSION}/win-${NAPI_ARCH}/node.lib")
-        set(NODE_LIB "${NAPI_DEST}/lib/node.lib")
-        if(NOT EXISTS "${NODE_LIB}")
-            message(STATUS "Downloading node.lib from ${NODE_LIB_URL}")
-            file(DOWNLOAD "${NODE_LIB_URL}" "${NODE_LIB}" SHOW_PROGRESS)
-        endif()
-        set(NODE_LIB_PATH "${NODE_LIB}")
-    endif()
-    
-    message(STATUS "Downloaded Node.js headers to: ${NODE_INCLUDE_DIRS}")
-endif()
-
-if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
-    message(FATAL_ERROR "Node.js development files not found.")
 endif()
 
 # -----------------------------------------------------------------------------
@@ -226,28 +134,39 @@ add_custom_command(TARGET cef_bridge_helper POST_BUILD
 )
 
 # -----------------------------------------------------------------------------
-# Node addon
+# Node addon (using cmake-js)
 # -----------------------------------------------------------------------------
-add_library(cef_bridge SHARED src/cef_bridge.cc)
-set_target_properties(cef_bridge PROPERTIES PREFIX "" SUFFIX ".node")
-target_compile_options(cef_bridge PRIVATE ${ADDON_FLAGS})
-target_compile_definitions(cef_bridge PRIVATE ${COMPILE_DEFS})
-target_include_directories(cef_bridge PRIVATE ${NODE_INCLUDE_DIRS} ${CEF_ROOT_ABS}/include)
+add_library(${PROJECT_NAME} SHARED src/cef_bridge.cc ${CMAKE_JS_SRC})
+set_target_properties(${PROJECT_NAME} PROPERTIES 
+    PREFIX "" 
+    SUFFIX ".node"
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+target_compile_options(${PROJECT_NAME} PRIVATE -fexceptions -frtti)
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${COMPILE_DEFS})
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_JS_INC} ${CEF_ROOT_ABS}/include)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_JS_LIB})
 
 if(APPLE)
-    target_link_libraries(cef_bridge PRIVATE
+    target_link_libraries(${PROJECT_NAME} PRIVATE
         ${CEF_LIB_PATH}/${CEF_LIB}
         ${WRAPPER_LIBRARY}
         ${COCOA_LIBRARY} ${APPKIT_LIBRARY} ${CEF_LIBRARY}
     )
 elseif(WIN32)
-    target_link_libraries(cef_bridge PRIVATE
+    target_link_libraries(${PROJECT_NAME} PRIVATE
         ${CEF_LIB_PATH}/${CEF_LIB}
         ${WRAPPER_LIBRARY}
         ${SYSTEM_LIBS}
     )
+    if(CMAKE_JS_NODELIB_DEF AND CMAKE_JS_NODELIB_TARGET)
+        execute_process(COMMAND ${CMAKE_AR} /def:${CMAKE_JS_NODELIB_DEF} /out:${CMAKE_JS_NODELIB_TARGET} ${CMAKE_STATIC_LINKER_FLAGS})
+    endif()
 else()
-    target_link_libraries(cef_bridge PRIVATE
+    target_link_libraries(${PROJECT_NAME} PRIVATE
         ${CEF_LIB_PATH}/${CEF_LIB}
         ${WRAPPER_LIBRARY}
         ${SYSTEM_LIBS} dl
@@ -256,7 +175,7 @@ endif()
 
 # Post-build commands
 if(WIN32)
-    add_custom_command(TARGET cef_bridge POST_BUILD
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Resources ${CMAKE_BINARY_DIR}/Resources
         COMMAND ${CMAKE_COMMAND} -E copy
@@ -273,7 +192,7 @@ if(WIN32)
             $<TARGET_FILE:cef_bridge_helper> ${CMAKE_BINARY_DIR}/cef_bridge_helper.exe
     )
 elseif(APPLE)
-    add_custom_command(TARGET cef_bridge POST_BUILD
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Resources ${CMAKE_BINARY_DIR}/Resources
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -286,7 +205,7 @@ elseif(APPLE)
             ${CEF_ROOT_ABS}/Release/resources.pak ${CMAKE_BINARY_DIR}/resources.pak
     )
 else()
-    add_custom_command(TARGET cef_bridge POST_BUILD
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Resources ${CMAKE_BINARY_DIR}/Resources
         COMMAND ${CMAKE_COMMAND} -E copy

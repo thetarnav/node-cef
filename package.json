@@ -8,14 +8,15 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -b src",
     "download:cef": "bun run download-cef.ts",
-    "build:cef": "cmake -B build -S . && cmake --build build --config Release",
+    "build:cef": "cmake-js build --CDCEF_ROOT=cef/linux64",
     "setup": "bun run download:cef && bun run build:cef",
     "postinstall": "bun run download:cef",
     "example": "LD_LIBRARY_PATH=build bun run example/index.ts",
     "test": "LD_LIBRARY_PATH=build bun run test/index.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "cmake-js": "^8.0.0"
   },
   "peerDependencies": {
     "typescript": "^5"
