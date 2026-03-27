@@ -404,6 +404,20 @@ std::string resolve_cef_root() {
 	if (!g_cef_root.empty()) {
 		return g_cef_root;
 	}
+#if defined(_WIN32)
+	void* handle = LoadLibraryA("libcef.dll");
+	if (handle) {
+		void* cef_sym = GetProcAddress((HMODULE)handle, "CefInitialize");
+		if (cef_sym) {
+			char path[MAX_PATH];
+			GetModuleFileNameA((HMODULE)handle, path, sizeof(path));
+			FreeLibrary((HMODULE)handle);
+			std::string libcef_dir = dir_name(path);
+			return libcef_dir;
+		}
+		FreeLibrary((HMODULE)handle);
+	}
+#else
 	void* handle = dlopen("libcef.so", RTLD_NOLOAD);
 	if (handle) {
 		Dl_info info;
@@ -415,6 +429,7 @@ std::string resolve_cef_root() {
 		}
 		dlclose(handle);
 	}
+#endif
 	return dir_name(module_path());
 }
 
@@ -665,13 +680,21 @@ void ensure_cef_initialized() {
 	settings.no_sandbox = true;
 
 	char cwd[4096];
+#if defined(_WIN32)
+	if (!_getcwd(cwd, sizeof(cwd))) {
+#else
 	if (!getcwd(cwd, sizeof(cwd))) {
+#endif
 		cwd[0] = '\0';
 	}
 
 	std::string cef_root = resolve_cef_root();
 	char abs_cef_root[4096];
+#if defined(_WIN32)
+	if (!_fullpath(abs_cef_root, cef_root.c_str(), sizeof(abs_cef_root)) != 0) {
+#else
 	if (!realpath(cef_root.c_str(), abs_cef_root)) {
+#endif
 		strcpy(abs_cef_root, cef_root.c_str());
 	}
 	const std::string resources_dir = join_path(abs_cef_root, "Resources");

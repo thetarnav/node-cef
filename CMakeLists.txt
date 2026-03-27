@@ -139,13 +139,26 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE -fexceptions -frtti)
-target_compile_definitions(${PROJECT_NAME} PRIVATE ${COMPILE_DEFS})
+if(WIN32)
+    target_compile_options(${PROJECT_NAME} PRIVATE /EHsc)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE -fexceptions -frtti)
+endif()
+
+if(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ${COMPILE_DEFS} NOMINMAX _CRT_SECURE_NO_WARNINGS)
+else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ${COMPILE_DEFS})
+endif()
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_JS_INC} ${CEF_ROOT_ABS}/include)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_JS_LIB})
 
 if(APPLE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        BUILD_RPATH "@executable_path/../Frameworks"
+        INSTALL_RPATH "@executable_path/../Frameworks"
+    )
     target_link_libraries(${PROJECT_NAME} PRIVATE
         ${CEF_LIB_PATH}/${CEF_LIB}
         ${WRAPPER_LIBRARY}
