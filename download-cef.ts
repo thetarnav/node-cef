@@ -121,12 +121,8 @@ try {
 	console.log(`[download-cef] Running CMake configure...`)
 	await bun.$`cmake -G ${cmake_gen} -DCMAKE_BUILD_TYPE=Release -B build -S .`.cwd(output_dir)
 
-	let build_parallel: string[] = []
-	if (platform !== "win32") {
-		build_parallel = ["-j", String(os.cpus().length)]
-	}
 	console.log(`[download-cef] Running CMake build for libcef_dll_wrapper...`)
-	await bun.$`cmake --build build --target libcef_dll_wrapper ${build_parallel.join(" ")} --config Release`.cwd(output_dir)
+	await bun.$`cmake --build build --target libcef_dll_wrapper -j ${os.cpus().length} --config Release`.cwd(output_dir)
 
 	console.log(`[download-cef] Wrapper library built successfully`)
 	console.log(`[download-cef] DONE`)
