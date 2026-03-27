@@ -5,9 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # CEF root directory (downloaded by scripts/download-cef.ts)
-# Can be overridden via CEF_ROOT environment variable
 if(NOT DEFINED CEF_ROOT)
-    # Detect platform from environment or use cmake system info
     if(WIN32)
         set(DEFAULT_PLATFORM "windows64")
     elseif(APPLE)
@@ -29,51 +27,33 @@ endif()
 
 # Platform-specific settings
 if(WIN32)
-    set(LIB_PREFIX "")
-    set(LIB_SUFFIX ".lib")
     set(CEF_LIB "libcef.lib")
     set(CEF_DLL "libcef.dll")
     set(WRAPPER_LIB "libcef_dll_wrapper.lib")
-    set(SHADOW_ENABLED FALSE)
     set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release")
+    set(SYSTEM_LIBS ws2_32 winmm gdi32 user32 comdlg32 uuid)
 elseif(APPLE)
-    set(LIB_PREFIX "lib")
-    set(LIB_SUFFIX ".dylib")
     set(CEF_LIB "Chromium Embedded Framework")
     set(CEF_DLL "libcef.dylib")
     set(WRAPPER_LIB "libcef_dll_wrapper.a")
-    set(SHADOW_ENABLED FALSE)
     set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release/Chromium Embedded Framework.framework")
-else()
-    set(LIB_PREFIX "lib")
-    set(LIB_SUFFIX ".so")
-    set(CEF_LIB "libcef.so")
-    set(CEF_DLL "libcef.so")
-    set(WRAPPER_LIB "libcef_dll_wrapper.a")
-    set(SHADOW_ENABLED TRUE)
-    set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release")
-endif()
-
-# Platform-specific system libraries
-if(WIN32)
-    set(SYSTEM_LIBS ws2_32 winmm gdi32 user32 comdlg32 uuid)
-    set(ADDON_LIBS ${SYSTEM_LIBS})
-elseif(APPLE)
     find_library(COCOA_LIBRARY Cocoa)
     find_library(APPKIT_LIBRARY AppKit)
     find_library(CEF_LIBRARY "Chromium Embedded Framework" PATHS "${CEF_ROOT_ABS}/Release")
     set(SYSTEM_LIBS ${COCOA_LIBRARY} ${APPKIT_LIBRARY})
-    set(ADDON_LIBS ${COCOA_LIBRARY} ${APPKIT_LIBRARY} ${CEF_LIBRARY})
 else()
+    set(CEF_LIB "libcef.so")
+    set(CEF_DLL "libcef.so")
+    set(WRAPPER_LIB "libcef_dll_wrapper.a")
+    set(CEF_LIB_PATH "${CEF_ROOT_ABS}/Release")
     set(SYSTEM_LIBS X11)
-    set(ADDON_LIBS X11 dl)
 endif()
 
 # Wrapper library
 if(WIN32)
     set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/Release/${WRAPPER_LIB}")
 elseif(APPLE)
-    set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/Release/${WRAPPER_LIB}")
+    set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/${WRAPPER_LIB}")
 else()
     set(WRAPPER_LIBRARY "${CEF_ROOT_ABS}/build/libcef_dll_wrapper/${WRAPPER_LIB}")
 endif()
@@ -82,7 +62,7 @@ if(NOT EXISTS "${WRAPPER_LIBRARY}")
     message(FATAL_ERROR "Wrapper library not found at ${WRAPPER_LIBRARY}. Run 'bun run download:cef' first.")
 endif()
 
-# Include directories
+# CEF include directories
 include_directories(
     ${CEF_ROOT_ABS}
     ${CEF_ROOT_ABS}/include
@@ -90,32 +70,7 @@ include_directories(
     ${CEF_ROOT_ABS}/libcef_dll/wrapper
 )
 
-# Common compile options (helper - no exceptions, no rtti)
-set(COMPILE_FLAGS_HELPER
-    -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
-    -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
-    -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
-    -Wno-comment -Wno-deprecated-declarations -m64 -march=x86-64 -fno-exceptions
-    -fno-rtti -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
-    -Wsign-compare -Wno-literal-suffix -Wno-narrowing
-    -Wno-attributes -Wno-array-bounds -Wno-stringop-overflow
-    -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
-    -D_FORTIFY_SOURCE=2
-)
-
-# Addon compile options (with exceptions for napi)
-set(COMPILE_FLAGS_ADDON
-    -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
-    -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
-    -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
-    -Wno-comment -Wno-deprecated-declarations -m64 -march=x86-64
-    -fexceptions -frtti -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
-    -Wsign-compare -Wno-literal-suffix -Wno-narrowing
-    -Wno-attributes -Wno-array-bounds -Wno-stringop-overflow
-    -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
-    -D_FORTIFY_SOURCE=2
-)
-
+# Common compile definitions
 set(COMPILE_DEFS
     CEF_USE_SANDBOX
     _FILE_OFFSET_BITS=64
@@ -125,7 +80,7 @@ set(COMPILE_DEFS
 
 # Platform-specific compile flags
 if(WIN32)
-    set(COMPILE_FLAGS_HELPER
+    set(HELPER_FLAGS
         /O2 /Ob2 /Oi /Ot /GL /MT /EHsc /W3 /WX-
         /wd4100 /wd4127 /wd4244 /wd4267 /wd4996 /utf-8
         /DNDEBUG /D_CRT_SECURE_NO_WARNINGS /D_UNICODE /DUNICODE /DNOMINMAX
@@ -133,16 +88,9 @@ if(WIN32)
         /D__STDC_CONSTANT_MACROS /D__STDC_FORMAT_MACROS
         /std:c++20 /MP /Gy /Gm-
     )
-    set(COMPILE_FLAGS_ADDON
-        /O2 /Ob2 /Oi /Ot /GL /MT /EHsc /W3 /WX-
-        /wd4100 /wd4127 /wd4244 /wd4267 /wd4996 /utf-8
-        /DNDEBUG /D_CRT_SECURE_NO_WARNINGS /D_UNICODE /DUNICODE /DNOMINMAX
-        /D_WIN32_WINNT=0x0601 /DWIN32 /D_USRDLL
-        /D__STDC_CONSTANT_MACROS /D__STDC_FORMAT_MACROS
-        /std:c++20 /MP /Gy /Gm-
-    )
+    set(ADDON_FLAGS ${HELPER_FLAGS})
 elseif(APPLE)
-    set(COMPILE_FLAGS_HELPER
+    set(HELPER_FLAGS
         -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
         -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
         -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
@@ -153,7 +101,7 @@ elseif(APPLE)
         -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
         -D_FORTIFY_SOURCE=2 -mmacosx-version-min=10.15
     )
-    set(COMPILE_FLAGS_ADDON
+    set(ADDON_FLAGS
         -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
         -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
         -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
@@ -165,7 +113,7 @@ elseif(APPLE)
         -D_FORTIFY_SOURCE=2 -mmacosx-version-min=10.15
     )
 else()
-    set(COMPILE_FLAGS_HELPER
+    set(HELPER_FLAGS
         -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
         -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
         -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
@@ -176,12 +124,12 @@ else()
         -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
         -D_FORTIFY_SOURCE=2
     )
-    set(COMPILE_FLAGS_ADDON
+    set(ADDON_FLAGS
         -O3 -DNDEBUG -fno-strict-aliasing -fPIC -fstack-protector -funwind-tables
         -fvisibility=hidden --param=ssp-buffer-size=4 -pipe -pthread -Wall -Werror
         -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
-        -Wno-comment -Wno-deprecated-declarations -m64 -march=x86-64
-        -fexceptions -frtti -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
+        -Wno-comment -Wno-deprecated-declarations -m64 -march=x86-64 -fexceptions -frtti
+        -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
         -Wsign-compare -Wno-narrowing
         -Wno-array-bounds
         -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
@@ -189,71 +137,65 @@ else()
     )
 endif()
 
-# Find node - use pkg-config first (works on some systems), then fallback to bun
-find_package(PkgConfig)
-if(PkgConfig_FOUND)
-    pkg_check_modules(NODE nodejs)
-    if(NODE_FOUND)
-        set(NODE_INCLUDE_DIRS "${NODE_INCLUDE_DIRS}")
-    endif()
-endif()
-
-# Fallback: find node headers via node or bun
-if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
-    # Try node first (more likely to have headers), then bun
-    foreach(PROG node bun)
-        find_program(NODE_EXECUTABLE ${PROG})
-        if(NODE_EXECUTABLE)
-            execute_process(
-                COMMAND ${NODE_EXECUTABLE} -p "require('path').join(require('path').dirname(require('path').dirname(process.execPath)), 'include', 'node')"
-                OUTPUT_VARIABLE NODE_INCLUDE_DIRS
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-            )
-            if(NODE_INCLUDE_DIRS AND EXISTS "${NODE_INCLUDE_DIRS}")
-                break()
-            endif()
-        endif()
-    endforeach()
-endif()
-
-# Try common installation paths as last resort
-if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
-    if(APPLE)
-        set(POSSIBLE_PATHS
-            "/opt/homebrew/include/node"
-            "/usr/local/include/node"
+# -----------------------------------------------------------------------------
+# Find Node.js headers
+# -----------------------------------------------------------------------------
+# Try node/bun executables
+foreach(PROG node bun)
+    find_program(NODE_EXE ${PROG})
+    if(NODE_EXE)
+        execute_process(
+            COMMAND ${NODE_EXE} -p "require('path').join(require('path').dirname(require('path').dirname(process.execPath)), 'include', 'node')"
+            OUTPUT_VARIABLE NODE_INCLUDE_DIRS
+            OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-    elseif(WIN32)
-        set(POSSIBLE_PATHS
-            "C:/Program Files/nodejs/include/node"
-            "$ENV{PROGRAMFILES}/nodejs/include/node"
-        )
-    else()
-        set(POSSIBLE_PATHS
-            "/usr/include/node"
-            "/usr/local/include/node"
-        )
-    endif()
-    foreach(PATH ${POSSIBLE_PATHS})
-        if(EXISTS "${PATH}")
-            set(NODE_INCLUDE_DIRS "${PATH}")
+        if(NODE_INCLUDE_DIRS AND EXISTS "${NODE_INCLUDE_DIRS}")
+            message(STATUS "Found Node.js headers via ${PROG}: ${NODE_INCLUDE_DIRS}")
             break()
         endif()
-    endforeach()
+    endif()
+endforeach()
+
+# Last resort: common paths
+if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
+    if(APPLE)
+        foreach(PATH /opt/homebrew/include/node /usr/local/include/node)
+            if(EXISTS "${PATH}")
+                set(NODE_INCLUDE_DIRS "${PATH}")
+                message(STATUS "Found Node.js headers at: ${NODE_INCLUDE_DIRS}")
+                break()
+            endif()
+        endforeach()
+    elseif(WIN32)
+        foreach(PATH "C:/Program Files/nodejs/include/node")
+            if(EXISTS "${PATH}")
+                set(NODE_INCLUDE_DIRS "${PATH}")
+                message(STATUS "Found Node.js headers at: ${NODE_INCLUDE_DIRS}")
+                break()
+            endif()
+        endforeach()
+    else()
+        foreach(PATH /usr/include/node /usr/local/include/node)
+            if(EXISTS "${PATH}")
+                set(NODE_INCLUDE_DIRS "${PATH}")
+                message(STATUS "Found Node.js headers at: ${NODE_INCLUDE_DIRS}")
+                break()
+            endif()
+        endforeach()
+    endif()
 endif()
 
-message(STATUS "NODE_INCLUDE_DIRS: ${NODE_INCLUDE_DIRS}")
-
 if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
-    message(FATAL_ERROR "Node.js development files not found. Set NODE_INCLUDE_DIRS manually.")
+    message(FATAL_ERROR "Node.js development files not found.")
 endif()
 
 # -----------------------------------------------------------------------------
 # Helper executable (CEF subprocess)
 # -----------------------------------------------------------------------------
 add_executable(cef_bridge_helper src/cef_bridge.cc)
-target_compile_options(cef_bridge_helper PRIVATE ${COMPILE_FLAGS_HELPER})
+target_compile_options(cef_bridge_helper PRIVATE ${HELPER_FLAGS})
 target_compile_definitions(cef_bridge_helper PRIVATE ${COMPILE_DEFS} -DCEF_HELPER_BINARY)
+target_include_directories(cef_bridge_helper PRIVATE ${CEF_ROOT_ABS}/include)
 
 target_link_libraries(cef_bridge_helper
     ${CEF_LIB_PATH}/${CEF_LIB}
@@ -261,7 +203,6 @@ target_link_libraries(cef_bridge_helper
     ${SYSTEM_LIBS}
 )
 
-# Copy helper to output directory
 add_custom_command(TARGET cef_bridge_helper POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         $<TARGET_FILE:cef_bridge_helper> $<TARGET_FILE_DIR:cef_bridge_helper>
@@ -272,28 +213,32 @@ add_custom_command(TARGET cef_bridge_helper POST_BUILD
 # -----------------------------------------------------------------------------
 add_library(cef_bridge SHARED src/cef_bridge.cc)
 set_target_properties(cef_bridge PROPERTIES PREFIX "" SUFFIX ".node")
-target_compile_options(cef_bridge PRIVATE ${COMPILE_FLAGS_ADDON})
+target_compile_options(cef_bridge PRIVATE ${ADDON_FLAGS})
 target_compile_definitions(cef_bridge PRIVATE ${COMPILE_DEFS})
-target_include_directories(cef_bridge PRIVATE ${NODE_INCLUDE_DIRS})
+target_include_directories(cef_bridge PRIVATE ${NODE_INCLUDE_DIRS} ${CEF_ROOT_ABS}/include)
 
-target_link_libraries(cef_bridge
-    ${CEF_LIB_PATH}/${CEF_LIB}
-    ${WRAPPER_LIBRARY}
-    ${ADDON_LIBS}
-)
-
-if(WIN32)
-    # ---
-elseif(APPLE)
-    target_link_options(cef_bridge PRIVATE "-Wl,-rpath,@executable_path/../Frameworks")
+if(APPLE)
+    target_link_libraries(cef_bridge PRIVATE
+        ${CEF_LIB_PATH}/${CEF_LIB}
+        ${WRAPPER_LIBRARY}
+        ${COCOA_LIBRARY} ${APPKIT_LIBRARY} ${CEF_LIBRARY}
+    )
+elseif(WIN32)
+    target_link_libraries(cef_bridge PRIVATE
+        ${CEF_LIB_PATH}/${CEF_LIB}
+        ${WRAPPER_LIBRARY}
+        ${SYSTEM_LIBS}
+    )
 else()
-    target_link_options(cef_bridge PRIVATE "-Wl,-rpath,\$ORIGIN")
+    target_link_libraries(cef_bridge PRIVATE
+        ${CEF_LIB_PATH}/${CEF_LIB}
+        ${WRAPPER_LIBRARY}
+        ${SYSTEM_LIBS} dl
+    )
 endif()
 
-# Copy all CEF distribution files to build/ directory
-# CEF requires resources to be in same directory as libcef.so
+# Post-build commands
 if(WIN32)
-    # Windows: copy DLLs and resources
     add_custom_command(TARGET cef_bridge POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Resources ${CMAKE_BINARY_DIR}/Resources
@@ -311,7 +256,6 @@ if(WIN32)
             $<TARGET_FILE:cef_bridge_helper> ${CMAKE_BINARY_DIR}/cef_bridge_helper.exe
     )
 elseif(APPLE)
-    # macOS: copy Frameworks and resources
     add_custom_command(TARGET cef_bridge POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Resources ${CMAKE_BINARY_DIR}/Resources
@@ -325,28 +269,21 @@ elseif(APPLE)
             ${CEF_ROOT_ABS}/Release/resources.pak ${CMAKE_BINARY_DIR}/resources.pak
     )
 else()
-    # Linux: copy .so files and resources
     add_custom_command(TARGET cef_bridge POST_BUILD
-        # Resources directory with icudtl.dat
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Resources ${CMAKE_BINARY_DIR}/Resources
-        # ICU data file needs to be directly in build/ for CEF's internal finder
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Resources/icudtl.dat ${CMAKE_BINARY_DIR}/icudtl.dat
-        # .pak files also need to be in build/ root for CEF's internal path resolution
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Resources/chrome_100_percent.pak ${CMAKE_BINARY_DIR}/chrome_100_percent.pak
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Resources/chrome_200_percent.pak ${CMAKE_BINARY_DIR}/chrome_200_percent.pak
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Resources/resources.pak ${CMAKE_BINARY_DIR}/resources.pak
-        # Chrome sandbox
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Release/chrome-sandbox ${CMAKE_BINARY_DIR}/chrome-sandbox
-        # Main CEF library
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Release/${CEF_DLL} ${CMAKE_BINARY_DIR}/${CEF_DLL}
-        # Graphics libraries
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Release/libEGL.so ${CMAKE_BINARY_DIR}/libEGL.so
         COMMAND ${CMAKE_COMMAND} -E copy
@@ -355,12 +292,10 @@ else()
             ${CEF_ROOT_ABS}/Release/libvk_swiftshader.so ${CMAKE_BINARY_DIR}/libvk_swiftshader.so
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Release/libvulkan.so.1 ${CMAKE_BINARY_DIR}/libvulkan.so.1
-        # V8 snapshot
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Release/v8_context_snapshot.bin ${CMAKE_BINARY_DIR}/v8_context_snapshot.bin
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Release/vk_swiftshader_icd.json ${CMAKE_BINARY_DIR}/vk_swiftshader_icd.json
-        # Helper executable
         COMMAND ${CMAKE_COMMAND} -E copy
             $<TARGET_FILE:cef_bridge_helper> ${CMAKE_BINARY_DIR}/cef_bridge_helper
     )

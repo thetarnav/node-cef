@@ -8,15 +8,14 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -b src",
     "download:cef": "bun run download-cef.ts",
-    "build:cef": "mkdir -p build && cd build && cmake .. && cmake --build . --config Release",
+    "build:cef": "cmake -B build -S . && cmake --build build --config Release",
     "setup": "bun run download:cef && bun run build:cef",
     "postinstall": "bun run download:cef",
     "example": "LD_LIBRARY_PATH=build bun run example/index.ts",
     "test": "LD_LIBRARY_PATH=build bun run test/index.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "node-gyp": "^10"
+    "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
