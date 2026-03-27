@@ -42,22 +42,38 @@ console.log(`[download-cef] Target CEF platform: ${cef_platform}`)
 console.log(`[download-cef] Output directory: ${path.join(import.meta.dir, "cef", cef_platform)}`)
 
 let output_dir = path.join(import.meta.dir, "cef", cef_platform)
+let wrapper_lib_path: string
+
+if (cef_platform.startsWith("windows")) {
+	wrapper_lib_path = path.join(output_dir, "build", "libcef_dll_wrapper", "libcef_dll_wrapper.lib")
+} else if (cef_platform.startsWith("macos")) {
+	wrapper_lib_path = path.join(output_dir, "build", "libcef_dll_wrapper", "libcef_dll_wrapper.a")
+} else {
+	wrapper_lib_path = path.join(output_dir, "build", "libcef_dll_wrapper", "libcef_dll_wrapper.a")
+}
+
 let url = `https://cef-builds.spotifycdn.com/cef_binary_${CEF_VERSION}%2Bchromium-${CHROMIUM_VERSION}_${cef_platform}_minimal.tar.bz2`
 
 console.log(`[download-cef] CEF URL: ${url}`)
+console.log(`[download-cef] Expected wrapper: ${wrapper_lib_path}`)
 
-if (!args.force && fs.existsSync(output_dir)) {
+let need_download = args.force || !fs.existsSync(output_dir)
+if (!need_download) {
 	let version_file = path.join(output_dir, ".version")
 	if (fs.existsSync(version_file)) {
 		let existing_version = fs.readFileSync(version_file, "utf-8")
 		console.log(`[download-cef] CEF already exists at ${output_dir} (version: ${existing_version})`)
-		if (args.force) {
-			console.log(`[download-cef] Force flag set, will re-download`)
-		} else {
-			console.log(`[download-cef] Skipping download`)
+		if (fs.existsSync(wrapper_lib_path)) {
+			console.log(`[download-cef] Wrapper library found, skipping download`)
 			process.exit(0)
+		} else {
+			console.log(`[download-cef] Wrapper library missing, will rebuild`)
 		}
+	} else {
+		console.log(`[download-cef] Version file missing, will re-download`)
 	}
+} else {
+	console.log(`[download-cef] Force flag set or output dir missing, will download`)
 }
 
 console.log(`[download-cef] Creating output directory: ${output_dir}`)
@@ -72,7 +88,11 @@ let archive = path.join(tmp_dir, `cef-${cef_platform}.tar.bz2`)
 
 try {
 	console.log(`[download-cef] Running curl to download...`)
-	cp.execSync(`curl -L -o "${archive}" "${url}"`, {stdio: "inherit"})
+	let curl_result = cp.spawnSync("curl", ["-L", "-o", archive, "--retry", "3", "--retry-delay", "1", url], {stdio: "inherit"})
+	if (curl_result.status !== 0) {
+		console.error(`[download-cef] curl failed with code ${curl_result.status}, trying without HTTP/2...`)
+		cp.execSync(`curl -L -o "${archive}" --http1.1 "${url}"`, {stdio: "inherit"})
+	}
 
 	let archive_size = fs.statSync(archive).size
 	console.log(`[download-cef] Downloaded ${archive_size} bytes`)
@@ -105,8 +125,12 @@ try {
 		stdio: "inherit",
 	})
 
-	console.log(`[download-cef] Running CMake build for libcef_dll_wrapper...`)
-	cp.execSync(`cmake --build build --target libcef_dll_wrapper -j${os.cpus().length}`, {
+	let build_parallel = ""
+	if (platform !== "win32") {
+		build_parallel = `-j${os.cpus().length}`
+	}
+	console.log(`[download-cef] Running CMake build for libcef_dll_wrapper ${build_parallel}...`)
+	cp.execSync(`cmake --build build --target libcef_dll_wrapper ${build_parallel} --config Release`, {
 		cwd: output_dir,
 		stdio: "inherit",
 	})

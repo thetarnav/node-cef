@@ -39,6 +39,10 @@ jobs:
         if: steps.cache-cef.outputs.cache-hit != 'true'
         run: bun run download:cef -- --platform ${{ matrix.platform }}
 
+      - name: Install Linux build dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install -y libx11-dev libxext-dev libxrandr-dev libxss-dev
+
       - name: Build CEF
         run: bun run build:cef
 
