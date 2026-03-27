@@ -88,7 +88,7 @@ let archive = path.join(tmp_dir, `cef-${cef_platform}.tar.bz2`)
 
 try {
 	console.log(`[download-cef] Downloading with bun (fetch)...`)
-	let response = await fetch(url)
+	let response = await fetch(url, {verbose: true})
 	if (!response.ok) {
 		throw new Error(`HTTP error! status: ${response.status}`)
 	}
