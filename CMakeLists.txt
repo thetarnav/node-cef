@@ -138,9 +138,9 @@ else()
 endif()
 
 # -----------------------------------------------------------------------------
-# Find Node.js headers
+# Find Node.js headers - try executable first, then download
 # -----------------------------------------------------------------------------
-# Try node/bun executables
+# Try node/bun executables first
 foreach(PROG node bun)
     find_program(NODE_EXE ${PROG})
     if(NODE_EXE)
@@ -156,33 +156,50 @@ foreach(PROG node bun)
     endif()
 endforeach()
 
-# Last resort: common paths
+# If not found, download Node.js headers
 if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
-    if(APPLE)
-        foreach(PATH /opt/homebrew/include/node /usr/local/include/node)
-            if(EXISTS "${PATH}")
-                set(NODE_INCLUDE_DIRS "${PATH}")
-                message(STATUS "Found Node.js headers at: ${NODE_INCLUDE_DIRS}")
-                break()
-            endif()
-        endforeach()
-    elseif(WIN32)
-        foreach(PATH "C:/Program Files/nodejs/include/node")
-            if(EXISTS "${PATH}")
-                set(NODE_INCLUDE_DIRS "${PATH}")
-                message(STATUS "Found Node.js headers at: ${NODE_INCLUDE_DIRS}")
-                break()
-            endif()
-        endforeach()
+    message(STATUS "Downloading Node.js headers...")
+    
+    # Determine platform and arch
+    if(WIN32)
+        set(NAPI_PLATFORM "win32")
+    elseif(APPLE)
+        set(NAPI_PLATFORM "darwin")
     else()
-        foreach(PATH /usr/include/node /usr/local/include/node)
-            if(EXISTS "${PATH}")
-                set(NODE_INCLUDE_DIRS "${PATH}")
-                message(STATUS "Found Node.js headers at: ${NODE_INCLUDE_DIRS}")
-                break()
-            endif()
-        endforeach()
+        set(NAPI_PLATFORM "linux")
     endif()
+    
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+        set(NAPI_ARCH "arm64")
+    else()
+        set(NAPI_ARCH "x64")
+    endif()
+    
+    set(NAPI_VERSION "22.16.0")
+    set(NAPI_DEST "${CMAKE_BINARY_DIR}/node-${NAPI_VERSION}")
+    set(NAPI_HEADERS_URL "https://nodejs.org/download/release/v${NAPI_VERSION}/node-v${NAPI_VERSION}-headers.tar.gz")
+    
+    if(NOT EXISTS "${NAPI_DEST}/include/node")
+        message(STATUS "Downloading from ${NAPI_HEADERS_URL}")
+        file(DOWNLOAD "${NAPI_HEADERS_URL}" "${CMAKE_BINARY_DIR}/node.tar.gz" SHOW_PROGRESS)
+        file(ARCHIVE_EXTRACT INPUT "${CMAKE_BINARY_DIR}/node.tar.gz" DESTINATION "${CMAKE_BINARY_DIR}")
+        file(REMOVE "${CMAKE_BINARY_DIR}/node.tar.gz")
+    endif()
+    
+    set(NODE_INCLUDE_DIRS "${NAPI_DEST}/include/node")
+    
+    # For Windows, also download node.lib
+    if(WIN32)
+        set(NODE_LIB_URL "https://nodejs.org/download/release/v${NAPI_VERSION}/win-${NAPI_ARCH}/node.lib")
+        set(NODE_LIB "${NAPI_DEST}/lib/node.lib")
+        if(NOT EXISTS "${NODE_LIB}")
+            message(STATUS "Downloading node.lib from ${NODE_LIB_URL}")
+            file(DOWNLOAD "${NODE_LIB_URL}" "${NODE_LIB}" SHOW_PROGRESS)
+        endif()
+        set(NODE_LIB_PATH "${NODE_LIB}")
+    endif()
+    
+    message(STATUS "Downloaded Node.js headers to: ${NODE_INCLUDE_DIRS}")
 endif()
 
 if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
