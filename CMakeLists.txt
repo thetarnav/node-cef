@@ -142,8 +142,8 @@ elseif(APPLE)
         -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
         -Wno-comment -Wno-deprecated-declarations -fno-exceptions
         -fno-rtti -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
-        -Wsign-compare -Wno-literal-suffix -Wno-narrowing
-        -Wno-attributes -Wno-array-bounds -Wno-stringop-overflow
+        -Wsign-compare -Wno-narrowing
+        -Wno-array-bounds
         -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
         -D_FORTIFY_SOURCE=2 -mmacosx-version-min=10.15
     )
@@ -153,8 +153,8 @@ elseif(APPLE)
         -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
         -Wno-comment -Wno-deprecated-declarations -fexceptions -frtti
         -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
-        -Wsign-compare -Wno-literal-suffix -Wno-narrowing
-        -Wno-attributes -Wno-array-bounds -Wno-stringop-overflow
+        -Wsign-compare -Wno-narrowing
+        -Wno-array-bounds
         -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
         -D_FORTIFY_SOURCE=2 -mmacosx-version-min=10.15
     )
@@ -165,8 +165,8 @@ else()
         -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
         -Wno-comment -Wno-deprecated-declarations -m64 -march=x86-64 -fno-exceptions
         -fno-rtti -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
-        -Wsign-compare -Wno-literal-suffix -Wno-narrowing
-        -Wno-attributes -Wno-array-bounds -Wno-stringop-overflow
+        -Wsign-compare -Wno-narrowing
+        -Wno-array-bounds
         -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
         -D_FORTIFY_SOURCE=2
     )
@@ -176,8 +176,8 @@ else()
         -Wno-missing-field-initializers -Wno-unused-parameter -Wno-error=comment
         -Wno-comment -Wno-deprecated-declarations -m64 -march=x86-64
         -fexceptions -frtti -fno-threadsafe-statics -fvisibility-inlines-hidden -std=c++20
-        -Wsign-compare -Wno-literal-suffix -Wno-narrowing
-        -Wno-attributes -Wno-array-bounds -Wno-stringop-overflow
+        -Wsign-compare -Wno-narrowing
+        -Wno-array-bounds
         -fdata-sections -ffunction-sections -fno-ident -U_FORTIFY_SOURCE
         -D_FORTIFY_SOURCE=2
     )
