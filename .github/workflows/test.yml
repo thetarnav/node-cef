@@ -50,10 +50,7 @@ jobs:
 
       - name: Run Tests (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb libgtk-3-0 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2t64
-          xvfb-run --auto-servernum bun run test
+        run: bun run test
         env:
           LD_LIBRARY_PATH: build
 
