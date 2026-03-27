@@ -59,8 +59,10 @@ if(WIN32)
     set(SYSTEM_LIBS ws2_32 winmm gdi32 user32 comdlg32 uuid)
     set(ADDON_LIBS ${SYSTEM_LIBS})
 elseif(APPLE)
-    set(SYSTEM_LIBS -framework Cocoa -framework AppKit)
-    set(ADDON_LIBS -framework Cocoa -framework AppKit -framework "Chromium Embedded Framework")
+    find_library(COCOA_LIBRARY Cocoa)
+    find_library(APPKIT_LIBRARY AppKit)
+    set(SYSTEM_LIBS ${COCOA_LIBRARY} ${APPKIT_LIBRARY})
+    set(ADDON_LIBS ${COCOA_LIBRARY} ${APPKIT_LIBRARY} "-framework Chromium Embedded Framework")
 else()
     set(SYSTEM_LIBS X11)
     set(ADDON_LIBS X11 dl)
@@ -194,19 +196,32 @@ endif()
 
 # Fallback: find node headers manually
 if(NOT NODE_FOUND)
-    execute_process(
-        COMMAND node -p "require('path').join(require('path').dirname(require('path').dirname(process.execPath)), 'include', 'node')"
-        OUTPUT_VARIABLE NODE_INCLUDE_DIRS
-    )
-    string(STRIP "${NODE_INCLUDE_DIRS}" NODE_INCLUDE_DIRS)
-    message(STATUS "Node include: ${NODE_INCLUDE_DIRS}")
-    set(NODE_FOUND TRUE)
+    find_program(NODE_EXECUTABLE node)
+    if(NOT NODE_EXECUTABLE)
+        find_program(NODE_EXECUTABLE bun)
+    endif()
+    if(NODE_EXECUTABLE)
+        execute_process(
+            COMMAND ${NODE_EXECUTABLE} -p "require('path').join(require('path').dirname(require('path').dirname(process.execPath)), 'include', 'node')"
+            OUTPUT_VARIABLE NODE_INCLUDE_DIRS
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+    endif()
+endif()
+
+if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
+    # Try common Windows locations
+    if(WIN32)
+        set(NODE_INCLUDE_DIRS "C:/Program Files/nodejs/include/node")
+    elseif(APPLE)
+        set(NODE_INCLUDE_DIRS "/usr/local/include/node")
+    endif()
 endif()
 
 message(STATUS "NODE_INCLUDE_DIRS: ${NODE_INCLUDE_DIRS}")
 
-if(NOT NODE_FOUND)
-    message(FATAL_ERROR "Node.js development files not found")
+if(NOT NODE_INCLUDE_DIRS OR NOT EXISTS "${NODE_INCLUDE_DIRS}")
+    message(FATAL_ERROR "Node.js development files not found. Set NODE_INCLUDE_DIRS manually.")
 endif()
 
 # -----------------------------------------------------------------------------
