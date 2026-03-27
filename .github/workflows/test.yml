@@ -11,7 +11,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux64
+          - os: macos-latest
+            platform: macosx64
+          - os: windows-latest
+            platform: windows64
 
     runs-on: ${{ matrix.os }}
 
@@ -26,12 +32,12 @@ jobs:
         id: cache-cef
         uses: actions/cache@v4
         with:
-          path: cef/${{ matrix.os == 'ubuntu-latest' && 'linux64' || matrix.os == 'macos-latest' && 'macosx64' || 'windows64' }}
-          key: cef-${{ matrix.os }}-v1
+          path: cef/${{ matrix.platform }}
+          key: cef-${{ matrix.platform }}-v1
 
       - name: Download CEF
         if: steps.cache-cef.outputs.cache-hit != 'true'
-        run: bun run download:cef
+        run: bun run download:cef -- --platform ${{ matrix.platform }}
 
       - name: Build CEF
         run: bun run build:cef
