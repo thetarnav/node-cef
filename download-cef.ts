@@ -27,7 +27,7 @@ let cef_platform: string
 
 switch (platform) {
 	case "linux":  cef_platform = "linux64"                                       ;break
-	case "darwin": cef_platform = arch === "arm64" ? "macosxarm64" : "macosx64"   ;break
+	case "darwin": cef_platform = arch === "arm64" ? "macosarm64" : "macosx64"   ;break
 	case "win32":  cef_platform = arch === "arm64" ? "windowsarm64" : "windows64" ;break
 	default:
 		throw new Error(`Unsupported platform: ${platform}-${arch}`)

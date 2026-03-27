@@ -15,7 +15,7 @@ jobs:
           - os: ubuntu-latest
             platform: linux64
           - os: macos-latest
-            platform: macosxarm64
+            platform: macosarm64
           - os: windows-latest
             platform: windows64
 
