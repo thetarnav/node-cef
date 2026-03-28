@@ -205,6 +205,12 @@ if(WIN32)
             ${CMAKE_BINARY_DIR}/Release/cef_bridge.node ${CMAKE_BINARY_DIR}/cef_bridge.node
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Resources/icudtl.dat ${CMAKE_BINARY_DIR}/icudtl.dat
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CEF_ROOT_ABS}/Resources/resources.pak ${CMAKE_BINARY_DIR}/resources.pak
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CEF_ROOT_ABS}/Resources/chrome_100_percent.pak ${CMAKE_BINARY_DIR}/chrome_100_percent.pak
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CEF_ROOT_ABS}/Resources/chrome_200_percent.pak ${CMAKE_BINARY_DIR}/chrome_200_percent.pak
     )
 elseif(APPLE)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
@@ -212,6 +218,8 @@ elseif(APPLE)
             ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework ${CMAKE_BINARY_DIR}/Frameworks/Chromium\ Embedded\ Framework.framework
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework/Resources ${CMAKE_BINARY_DIR}/Resources
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_BINARY_DIR}/Release/cef_bridge_helper ${CMAKE_BINARY_DIR}/cef_bridge_helper
         COMMAND /usr/bin/install_name_tool -change @executable_path/../Frameworks/Chromium\ Embedded\ Framework.framework/Chromium\ Embedded\ Framework @loader_path/Frameworks/Chromium\ Embedded\ Framework.framework/Chromium\ Embedded\ Framework ${CMAKE_BINARY_DIR}/cef_bridge.node
     )
 else()
