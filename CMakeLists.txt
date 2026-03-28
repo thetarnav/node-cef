@@ -192,8 +192,6 @@ if(WIN32)
             ${CEF_ROOT_ABS}/Release/chrome_elf.dll ${CMAKE_BINARY_DIR}/chrome_elf.dll
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_BINARY_DIR}/Release/cef_bridge.node ${CMAKE_BINARY_DIR}/cef_bridge.node
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_BINARY_DIR}/Release/cef_bridge_helper.exe ${CMAKE_BINARY_DIR}/cef_bridge_helper.exe
     )
 elseif(APPLE)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
