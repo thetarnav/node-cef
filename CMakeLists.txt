@@ -156,8 +156,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_JS_LIB})
 
 if(APPLE)
     set_target_properties(${PROJECT_NAME} PROPERTIES
-        BUILD_RPATH "@executable_path/../Frameworks"
-        INSTALL_RPATH "@executable_path/../Frameworks"
+        BUILD_RPATH "@loader_path/../Frameworks"
+        INSTALL_RPATH "@loader_path/../Frameworks"
     )
     target_link_libraries(${PROJECT_NAME} PRIVATE
         ${CEF_LIB_PATH}/${CEF_LIB}
@@ -202,15 +202,13 @@ if(WIN32)
 elseif(APPLE)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework/Resources ${CMAKE_BINARY_DIR}/cef_bridge_helper.framework/Resources
+            ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework ${CMAKE_BINARY_DIR}/Frameworks/Chromium\ Embedded\ Framework.framework
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework ${CMAKE_BINARY_DIR}/cef_bridge_helper.framework/Frameworks/Chromium\ Embedded\ Framework
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework/Libraries ${CMAKE_BINARY_DIR}/cef_bridge_helper.framework/Libraries
+            ${CEF_ROOT_ABS}/Resources ${CMAKE_BINARY_DIR}/Resources
         COMMAND ${CMAKE_COMMAND} -E copy
-            ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework/Resources/icudtl.dat ${CMAKE_BINARY_DIR}/icudtl.dat
+            ${CEF_ROOT_ABS}/Release/icudtl.dat ${CMAKE_BINARY_DIR}/icudtl.dat
         COMMAND ${CMAKE_COMMAND} -E copy
-            ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework/Resources/resources.pak ${CMAKE_BINARY_DIR}/resources.pak
+            ${CEF_ROOT_ABS}/Release/resources.pak ${CMAKE_BINARY_DIR}/resources.pak
     )
 else()
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
