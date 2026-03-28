@@ -64,7 +64,7 @@ In the renderer (HTML/JS), use the `cef` object:
 bun run example
 ```
 
-This requires `LD_LIBRARY_PATH=build` to find the CEF shared libraries. The package.json `example` script handles this automatically.
+The addon uses RPATH to find CEF libraries in the build directory, so no LD_LIBRARY_PATH needed.
 
 ## Required Dependencies
 
@@ -80,17 +80,7 @@ The following libraries must be accessible at runtime:
 - `libvk_swiftshader.so` - Vulkan/GLES
 - `icudtl.dat` - ICU data
 
-These are located in the `build/` directory.
-
-### Setting LD_LIBRARY_PATH
-
-When running your application, ensure the build directory is in the library path:
-
-```bash
-LD_LIBRARY_PATH=build bun run your-app.ts
-```
-
-Or set it programmatically in your scripts.
+These are located in the `build/` directory. RPATH is set to `$ORIGIN` so libraries are found automatically.
 
 ## Developer Setup
 

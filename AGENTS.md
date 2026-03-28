@@ -96,11 +96,8 @@ bun run typecheck    # Type check
 ## Testing
 
 ```bash
-# Run example (requires LD_LIBRARY_PATH)
+# Run example
 bun run example
-
-# Or manually:
-cd build && LD_LIBRARY_PATH=. bun run ../example/index.ts
 ```
 
 ## Change Management for Agents

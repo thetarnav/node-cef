@@ -11,9 +11,9 @@
     "build:cef": "cmake-js build",
     "setup": "bun run download:cef && bun run build:cef",
     "postinstall": "bun run download:cef",
-    "example": "LD_LIBRARY_PATH=build bun run example/index.ts",
-    "test:bun": "LD_LIBRARY_PATH=build bun run test/index.ts",
-    "test:node": "LD_LIBRARY_PATH=build node test/index.ts"
+    "example": "bun run example/index.ts",
+    "test:bun": "bun run test/index.ts",
+    "test:node": "node test/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

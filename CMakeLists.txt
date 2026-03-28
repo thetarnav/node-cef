@@ -123,6 +123,13 @@ target_link_libraries(cef_bridge_helper
     ${SYSTEM_LIBS}
 )
 
+if(LINUX)
+    set_target_properties(cef_bridge_helper PROPERTIES
+        BUILD_RPATH "$ORIGIN"
+        INSTALL_RPATH "$ORIGIN"
+    )
+endif()
+
 add_custom_command(TARGET cef_bridge_helper POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         $<TARGET_FILE:cef_bridge_helper> $<TARGET_FILE_DIR:cef_bridge_helper>
@@ -178,6 +185,10 @@ else()
         ${CEF_LIB_PATH}/${CEF_LIB}
         ${WRAPPER_LIBRARY}
         ${SYSTEM_LIBS} dl
+    )
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        BUILD_RPATH "$ORIGIN"
+        INSTALL_RPATH "$ORIGIN"
     )
 endif()
 
