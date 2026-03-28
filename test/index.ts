@@ -17,7 +17,7 @@ const TEST_HTML_PATH = url.fileURLToPath(new URL('index.html', import.meta.url))
 
 async function run_tests(): Promise<void> {
     console.log('Initializing CEF...')
-    cef.init()
+    cef.init({disableGpu: true})
 
     console.log('Creating browser window...')
     let token = cef.createWindow('file://' + TEST_HTML_PATH, msg => {

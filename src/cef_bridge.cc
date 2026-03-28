@@ -257,12 +257,16 @@ private:
 	IMPLEMENT_REFCOUNTING(Bridge_Render_Process_Handler);
 };
 
+bool g_disable_gpu = false;
+
 class Bridge_App final : public CefApp, public CefRenderProcessHandler {
 public:
 	void OnBeforeCommandLineProcessing(const CefString& process_type, CefRefPtr<CefCommandLine> command_line) override {
-		command_line->AppendSwitch("disable-gpu");
-		command_line->AppendSwitch("disable-gpu-compositing");
-		command_line->AppendSwitch("disable-software-rasterizer");
+		if (g_disable_gpu) {
+			command_line->AppendSwitch("disable-gpu");
+			command_line->AppendSwitch("disable-gpu-compositing");
+			command_line->AppendSwitch("disable-software-rasterizer");
+		}
 	}
 
 	CefRefPtr<CefRenderProcessHandler> GetRenderProcessHandler() override {
@@ -828,6 +832,14 @@ napi_value init(napi_env env, napi_callback_info info) {
 			if (has_subprocess) {
 				napi_get_named_property(env, args[0], "browserSubprocessPath", &path_value);
 				g_browser_subprocess_path = napi_get_string(env, path_value);
+			}
+
+			bool has_disable_gpu = false;
+			napi_has_named_property(env, args[0], "disableGpu", &has_disable_gpu);
+			if (has_disable_gpu) {
+				napi_value gpu_value;
+				napi_get_named_property(env, args[0], "disableGpu", &gpu_value);
+				napi_get_value_bool(env, gpu_value, &g_disable_gpu);
 			}
 		}
 	}

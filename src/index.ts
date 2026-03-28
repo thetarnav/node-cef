@@ -7,6 +7,7 @@ type Token = number & {__token: void}
 
 type Init_Options = {
     browserSubprocessPath?: string
+    disableGpu?: boolean
 }
 
 type Create_Window_Options = {
@@ -43,6 +44,7 @@ export function init(options?: Init_Options): void {
             native = require(addon_path)
             native!.init({
                 browserSubprocessPath: options?.browserSubprocessPath,
+                disableGpu: options?.disableGpu,
             })
             return
         }
