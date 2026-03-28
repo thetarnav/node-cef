@@ -185,7 +185,7 @@ endif()
 if(WIN32)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CEF_ROOT_ABS}/Release/Resources ${CMAKE_BINARY_DIR}/Resources
+            ${CEF_ROOT_ABS}/Resources ${CMAKE_BINARY_DIR}/Resources
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Release/${CEF_DLL} ${CMAKE_BINARY_DIR}/${CEF_DLL}
         COMMAND ${CMAKE_COMMAND} -E copy
@@ -203,6 +203,7 @@ elseif(APPLE)
             ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework ${CMAKE_BINARY_DIR}/Frameworks/Chromium\ Embedded\ Framework.framework
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework/Resources ${CMAKE_BINARY_DIR}/Resources
+        COMMAND /usr/bin/install_name_tool -change @executable_path/../Frameworks/Chromium\ Embedded\ Framework.framework/Chromium\ Embedded\ Framework @loader_path/../Frameworks/Chromium\ Embedded\ Framework.framework/Chromium\ Embedded\ Framework ${CMAKE_BINARY_DIR}/cef_bridge.node
     )
 else()
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
