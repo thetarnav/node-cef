@@ -1,4 +1,4 @@
-import * as cef from '../src/index.js'
+import * as cef from '../src/index.ts'
 import * as url from 'node:url'
 
 interface Test_Result {
