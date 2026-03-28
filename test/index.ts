@@ -72,4 +72,9 @@ async function run_tests(): Promise<void> {
     }, 30000)
 }
 
-run_tests()
+try {
+    run_tests()
+} catch (error) {
+    console.error('Test failed:', error);
+    process.exit(1);
+}
