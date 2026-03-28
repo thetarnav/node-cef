@@ -156,8 +156,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_JS_LIB})
 
 if(APPLE)
     set_target_properties(${PROJECT_NAME} PROPERTIES
-        BUILD_RPATH "@loader_path/../Frameworks"
-        INSTALL_RPATH "@loader_path/../Frameworks"
+        BUILD_RPATH "@loader_path/Frameworks"
+        INSTALL_RPATH "@loader_path/Frameworks"
     )
     target_link_libraries(${PROJECT_NAME} PRIVATE
         ${CEF_LIB_PATH}/${CEF_LIB}
@@ -203,7 +203,7 @@ elseif(APPLE)
             ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework ${CMAKE_BINARY_DIR}/Frameworks/Chromium\ Embedded\ Framework.framework
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework/Resources ${CMAKE_BINARY_DIR}/Resources
-        COMMAND /usr/bin/install_name_tool -change @executable_path/../Frameworks/Chromium\ Embedded\ Framework.framework/Chromium\ Embedded\ Framework @loader_path/../Frameworks/Chromium\ Embedded\ Framework.framework/Chromium\ Embedded\ Framework ${CMAKE_BINARY_DIR}/cef_bridge.node
+        COMMAND /usr/bin/install_name_tool -change @executable_path/../Frameworks/Chromium\ Embedded\ Framework.framework/Chromium\ Embedded\ Framework @loader_path/Frameworks/Chromium\ Embedded\ Framework.framework/Chromium\ Embedded\ Framework ${CMAKE_BINARY_DIR}/cef_bridge.node
     )
 else()
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
