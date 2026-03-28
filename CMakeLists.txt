@@ -219,7 +219,7 @@ elseif(APPLE)
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework/Resources ${CMAKE_BINARY_DIR}/Resources
         COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_BINARY_DIR}/Release/cef_bridge_helper ${CMAKE_BINARY_DIR}/cef_bridge_helper
+            ${CMAKE_BINARY_DIR}/cef_bridge_helper ${CMAKE_BINARY_DIR}/cef_bridge_helper
         COMMAND /usr/bin/install_name_tool -change @executable_path/../Frameworks/Chromium\ Embedded\ Framework.framework/Chromium\ Embedded\ Framework @loader_path/Frameworks/Chromium\ Embedded\ Framework.framework/Chromium\ Embedded\ Framework ${CMAKE_BINARY_DIR}/cef_bridge.node
     )
 else()
