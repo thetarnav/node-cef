@@ -204,7 +204,7 @@ elseif(APPLE)
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework ${CMAKE_BINARY_DIR}/Frameworks/Chromium\ Embedded\ Framework.framework
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CEF_ROOT_ABS}/Resources ${CMAKE_BINARY_DIR}/Resources
+            ${CEF_ROOT_ABS}/Release/Chromium\ Embedded\ Framework.framework/Resources ${CMAKE_BINARY_DIR}/Resources
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Release/icudtl.dat ${CMAKE_BINARY_DIR}/icudtl.dat
         COMMAND ${CMAKE_COMMAND} -E copy

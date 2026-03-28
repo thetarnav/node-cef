@@ -8,7 +8,10 @@
 #include <unordered_map>
 #include <vector>
 
-#if !defined(_WIN32)
+#if defined(_WIN32)
+	#include <windows.h>
+	#include <direct.h>
+#else
 	#include <dlfcn.h>
 #endif
 
