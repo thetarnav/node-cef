@@ -191,10 +191,6 @@ if(WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CEF_ROOT_ABS}/Release/chrome_elf.dll ${CMAKE_BINARY_DIR}/chrome_elf.dll
         COMMAND ${CMAKE_COMMAND} -E copy
-            ${CEF_ROOT_ABS}/Release/icudtl.dat ${CMAKE_BINARY_DIR}/icudtl.dat
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CEF_ROOT_ABS}/Release/resources.pak ${CMAKE_BINARY_DIR}/resources.pak
-        COMMAND ${CMAKE_COMMAND} -E copy
             $<TARGET_FILE:cef_bridge_helper> ${CMAKE_BINARY_DIR}/cef_bridge_helper.exe
     )
 elseif(APPLE)
