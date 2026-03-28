@@ -266,6 +266,9 @@ public:
 			command_line->AppendSwitch("disable-gpu");
 			command_line->AppendSwitch("disable-gpu-compositing");
 			command_line->AppendSwitch("disable-software-rasterizer");
+			command_line->AppendSwitch("disable-accelerated-2d-canvas");
+			command_line->AppendSwitch("disable-accelerated-video-decode");
+			command_line->AppendSwitch("in-process-gpu");
 		}
 	}
 
